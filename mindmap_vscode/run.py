@@ -56,6 +56,12 @@ def main() -> int:
         print("error: npm not found. Please install Node.js.", file=sys.stderr)
         return 1
 
+    # Same as build.py: compile needs local devDependencies (typescript -> tsc in node_modules/.bin).
+    node_modules = ext_dir / "node_modules"
+    need_install = not node_modules.is_dir() or not (node_modules / "jsmind").is_dir()
+    if need_install:
+        _run([npm_cmd, "install"], cwd=ext_dir)
+
     # Ensure extension TS is compiled so desktop can reuse dist/shared/mindmapCore.js
     _run([npm_cmd, "run", "compile"], cwd=ext_dir)
 
