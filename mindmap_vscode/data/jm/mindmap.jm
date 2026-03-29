@@ -1,0 +1,141 @@
+{
+  "meta": {
+    "name": "mindmap",
+    "author": "mcp",
+    "version": "1.0"
+  },
+  "format": "node_tree",
+  "data": {
+    "id": "root",
+    "topic": "测试脑图 · Mindmap VSCode",
+    "children": [
+      {
+        "id": "n_test_basic",
+        "topic": "基础结构",
+        "children": [
+          {
+            "id": "n_test_basic_a",
+            "topic": "一级子节点 A",
+            "children": []
+          },
+          {
+            "id": "n_test_basic_b",
+            "topic": "一级子节点 B（含孙节点）",
+            "children": [
+              {
+                "id": "n_test_basic_b1",
+                "topic": "孙节点 B-1",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "n_test_ai",
+        "topic": "AI / 自动化",
+        "children": [
+          {
+            "id": "n_test_ai_gettree",
+            "topic": "aiGetTree 树结构校验",
+            "children": []
+          },
+          {
+            "id": "n_test_ai_ops",
+            "topic": "aiApplyOps（dryRun / transaction / strict）",
+            "children": []
+          },
+          {
+            "id": "n_test_ai_sel",
+            "topic": "aiGetSelection / select",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "n_test_mcp",
+        "topic": "MCP（Pencil 形态）",
+        "children": [
+          {
+            "id": "n_test_mcp_state",
+            "topic": "get_editor_state + include_schema",
+            "children": []
+          },
+          {
+            "id": "n_test_mcp_get",
+            "topic": "batch_get（readDepth / nodeIds）",
+            "children": []
+          },
+          {
+            "id": "n_test_mcp_design",
+            "topic": "batch_design → operations JSON 字符串",
+            "children": []
+          },
+          {
+            "id": "n_test_mcp_cfg",
+            "topic": "Configure Cursor MCP / Diagnose MCP Setup",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "n_test_sample",
+        "topic": "示例业务数据（占位）",
+        "children": [
+          {
+            "id": "n_test_sample_req",
+            "topic": "需求：用户登录后展示仪表盘",
+            "children": []
+          },
+          {
+            "id": "n_test_sample_risk",
+            "topic": "风险：第三方 API 限流",
+            "children": []
+          },
+          {
+            "id": "n_test_sample_task",
+            "topic": "任务：补集成测试（登录流）",
+            "children": []
+          },
+          {
+            "id": "n_test_sample_done",
+            "topic": "已完成：脑图编辑器快捷键说明",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "n_test_crud",
+        "topic": "增删改测点",
+        "children": [
+          {
+            "id": "n_test_crud_update_me",
+            "topic": "在此节点上测 update 标题",
+            "children": []
+          },
+          {
+            "id": "n_test_crud_delete_ok",
+            "topic": "可安全删除的叶子（测 delete）",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "n_test_edge",
+        "topic": "边界与展示",
+        "children": [
+          {
+            "id": "n_test_edge_long",
+            "topic": "较长标题：用于观察折行、画布滚动与选中高亮是否正常",
+            "children": []
+          },
+          {
+            "id": "n_test_edge_num",
+            "topic": "数字与符号 2025-03-22 · #tag / (括号)",
+            "children": []
+          }
+        ]
+      }
+    ]
+  }
+}

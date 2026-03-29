@@ -1,0 +1,25 @@
+{
+  "meta": {
+    "name": "mindmap",
+    "author": "mcp",
+    "version": "1.0"
+  },
+  "format": "node_tree",
+  "data": {
+    "id": "root",
+    "topic": "啊实打实的",
+    "children": [
+      {
+        "id": "n_2e7e53f6f8be68",
+        "topic": "New Node",
+        "children": [
+          {
+            "id": "n_9e998a9e8f749",
+            "topic": "New Node",
+            "children": []
+          }
+        ]
+      }
+    ]
+  }
+}

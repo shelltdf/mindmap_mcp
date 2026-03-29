@@ -1,0 +1,11 @@
+src
+test
+.git
+.vscode
+out
+*.ts
+*.map
+desktop
+doc
+run.py
+

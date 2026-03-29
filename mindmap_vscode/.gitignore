@@ -1,0 +1,12 @@
+node_modules/
+out/
+dist/
+__pycache__/
+
+# VS Code local settings
+.vscode/
+
+# Local build artifacts
+*.vsix
+*.log
+

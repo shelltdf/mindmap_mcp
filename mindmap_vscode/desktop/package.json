@@ -1,0 +1,46 @@
+{
+  "name": "mindmap-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Standalone desktop mode for mindmap-vscode.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:win": "electron-builder --win nsis portable",
+    "build:linux": "electron-builder --linux AppImage",
+    "build:mac": "electron-builder --mac dmg"
+  },
+  "devDependencies": {
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.av.aidev.mindmap.desktop",
+    "productName": "MindmapDesktop",
+    "directories": {
+      "output": "../out/desktop"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**",
+      "../media/jsmind/**"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ]
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ]
+    }
+  }
+}

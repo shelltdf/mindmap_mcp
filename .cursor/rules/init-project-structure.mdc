@@ -1,0 +1,135 @@
+---
+description: 初始化/补齐项目目录结构（只增不改，冲突必提示）
+alwaysApply: true
+---
+
+# 初始化项目：创建必要目录结构（强制）
+
+当进入一个新仓库、或仓库内容不完整时，必须先把“基础目录结构”补齐，再进行功能实现或文档编写。
+
+## 目标目录结构（文档根：`ai-software-engineering/`）
+
+必须确保以下目录存在（缺失则创建）：
+
+- `ai-software-engineering/00-concept/`：概念（人类主笔）
+- `ai-software-engineering/01-logic/`：逻辑（AI 为主）
+- `ai-software-engineering/02-physical/`：物理（AI 为主）
+- `ai-software-engineering/03-ops/`：运维（AI 为主）
+
+## 初始化原则（不得破坏现有工程）
+
+- **只增不改**：仅创建缺失的目录/文件；不重命名、不移动、不删除任何现有路径。
+- **冲突必提示**：若发现目标路径已存在但类型不匹配（例如同名文件占用目录名），必须停止该路径的创建，并在回复中列出冲突项与最小人工处理动作。
+- **避免覆盖**：若发现初始化占位文件（如 `README.md`、`index.md`）已存在，则不得覆盖；改为创建 `*_template.md` 或 `*_init.md` 供人工合并，或仅在回复中说明建议内容。
+- **ASCII 路径**：新增代码路径/文件名必须英文/ASCII，不得使用中文文件名。
+- **UTF-8**：新增文本文件默认 UTF-8 编码。
+
+## 初始化步骤（每次都要做的探测 → 补齐）
+
+1. **探测现状**：检查 `ai-software-engineering/` 及上述 4 个子目录是否存在；同时检查是否有同名文件占位导致无法创建目录。
+2. **补齐目录**：对缺失目录执行创建。
+3. **可选占位文件（不覆盖）**：若目录为空，可新增轻量占位文件以固定结构（如 `README.md`）；若已存在同名文件则跳过。
+4. **输出初始化摘要**：在回复中必须包含：
+   - 本轮新增了哪些路径
+   - 哪些目录/文件已存在所以未改动
+   - 冲突项（若有）与需要的最小人工动作
+
+## 初始化后同步（强制）
+
+完成“探测 → 补齐目录 → 可选占位文件”后，必须立刻执行一次“全量同步尝试”（参见 `.cursor/rules/sync-and-mapping.mdc`），确保四阶段文档最终一致；若发现不一致项，持续同步直到无不一致或明确阻塞原因。
+
+### 初始化的生成方向（强制）
+
+**初始化阶段默认只允许正向生成**（先概念，再生成其余阶段），以避免在没有实现事实依据时发生“反向臆测”：
+
+- `00-concept` → `01-logic` → `02-physical` → `03-ops`
+
+### 初始化必须一次完成四阶段（强制）
+
+当处于“初始化项目”流程时，若未遇到冲突（见下文），必须在同一次初始化过程中**直接完成全部四个阶段的最小闭环**：
+
+- 补齐 `00-concept` 最低范例集合（不覆盖同名文件）
+- 生成/补齐 `01-logic`（**`system-design.md`** + 若干 **`detailed-design-*.md`**（或 `detailed/`）；业务/流程/用例/接口草案等落在详细设计侧）
+- 生成/补齐 `02-physical`（可落地实现规格；初始化早期允许由概念正向推导产出）
+- 生成/补齐 `03-ops`（运行、部署、监控、回滚等最小运维说明）
+
+初始化不应停留在“只创建目录/只写某一个阶段”的半成品状态；除非出现明确冲突或阻塞原因，必须持续同步直到四阶段一致。
+
+说明：
+
+- 若 `00-concept` 缺失最低范例集合（`product-design.md`、`software-design.md`、`database-design.md`、`interface-design.md`），必须先补齐（不覆盖同名文件）。
+- 若 `01/02/03` 已存在文档但与 `00-concept` 明显冲突，应进入冲突提示流程（列出冲突路径与最小人工选择动作），不得直接用后阶段覆盖前阶段。
+
+#### 什么算“冲突”（必须提示人类）
+
+满足任一条件视为冲突，必须停止自动决策并提示最小人工动作：
+
+- 同一概念在不同阶段文档中给出**不一致的接口形状/字段/默认值/边界条件/错误语义**
+- 既有阶段文档与初始化要生成的内容出现**不可安全覆盖**的差异（例如已有真实接口定义与概念相矛盾）
+- 目录结构冲突（例如同名文件占用目录名，导致无法创建必需目录）
+
+### 允许逆向生成的条件（仅限已存在工程）
+
+只有当仓库中**已存在可运行/可验证的实现产物**（代码、接口真实形状、真实字段、真实错误语义等）时，才允许执行“代码 → 文档”的逆向补齐/回写，用于把事实沉淀到四阶段文档中。典型场景：
+
+- 迁入历史项目、已有用户自定义实现子项目（例如 `implementations/*/`、`apps/*/`、`clients/*/`）
+- 代码先行且有测试/可执行入口可验证行为
+
+若不满足上述条件，禁止从 `01/02/03` 或实现侧“反向生成” `00-concept`（只能提示需要人类补概念或先明确需求）。
+
+## 初始化后的默认同步基线：helloworld + foo（强制）
+
+当仓库尚未定义具体业务需求时，允许将产品本身定义为最小可交付物（MVP）：
+
+- `helloworld`：一个命令行程序，输出问候语
+- `foo`：一个可复用库，负责名字规范化与问候语生成
+
+### 单一事实来源（必须遵守）
+
+与该 MVP 相关的真实定义在**进入实现阶段后**必须以 `ai-software-engineering/02-physical/` 下**按构建目标拆分**的 `spec.md` 为准（**索引**见 `02-physical/README.md`；本仓库示例为 `helloworld-exe/spec.md`、`foo-lib/spec.md`），包括但不限于：
+
+- CLI 参数、输出与退出码（若适用）
+- 默认值与边界条件
+- 错误码与错误语义
+
+> 兼容说明：在“纯初始化、尚未落地任何实现产物”的早期阶段，允许先从 `00-concept` 正向推导并产出 `02-physical/<target-id>/`；一旦各目标 `spec.md` 建立并开始驱动实现，即成为后续同步的单一事实来源，变更必须触发四阶段一致性同步。历史单文件 `02-physical/helloworld-foo.md` 仅作迁移入口时可保留。
+
+### 三阶段映射（必须保持一致）
+
+任何对 MVP 的变更都必须触发四阶段文档同步，至少保证以下一致并互相引用：
+
+- `ai-software-engineering/01-logic/`：**`system-design.md`**、多篇 **`detailed-design-*.md`**（或 `detailed/`），及 **`README.md`** 索引；历史单文件如 `helloworld-foo.md` 可逐步迁移或保留跳转（参见 `sync-and-mapping.mdc`「逻辑阶段」）
+- `ai-software-engineering/02-physical/README.md` 与各目标目录（`spec.md`、`uml-*.md` 等）
+- `ai-software-engineering/03-ops/helloworld-foo.md`（及 `user-manual.md` / `developer-manual.md` 等）
+
+### 禁止越界（必须）
+
+- 文档必须落在 `ai-software-engineering/` 内
+- 实现产物（代码、构建、依赖、实现侧 README 等）必须落在 `ai-software-engineering/` 外（目录由用户指定，例如 `implementations/*/`、`apps/*/`）
+
+## 推荐占位文件（可选）
+
+在不覆盖现有文件的前提下，可以创建：
+
+- `ai-software-engineering/00-concept/README.md`：概念阶段索引入口（**必含** `product-design.md` 入口；**软件/接口/数据库**类文档若有多篇须在此罗列，参见 `.cursor/rules/sync-and-mapping.mdc`「概念阶段」）
+- `ai-software-engineering/00-concept/product-design.md`：**唯一**产品设计主文档范例（UI 设计、用例图、活动图、业务逻辑、产品概述等）
+- `ai-software-engineering/00-concept/software-design.md`：软件设计范例（**可再增**多篇 `software-design*.md`；默认约定可包含 `helloworld` 可执行程序与 `foo` 库）
+- `ai-software-engineering/00-concept/database-design.md`：数据库/存储设计范例（**可再增**多篇 `database-design*.md`）
+- `ai-software-engineering/00-concept/interface-design.md`：接口设计范例（**仅** API/RPC/IPC 等程序间接口，**不含** GUI；**可再增**多篇 `interface-design*.md`）
+- `ai-software-engineering/01-logic/README.md`：索引 **`system-design.md`**（一般一份）与多篇 **`detailed-design-*.md`**（或 `detailed/`）、可选综合文档；参见 `.cursor/rules/sync-and-mapping.mdc`「逻辑阶段」
+- `ai-software-engineering/01-logic/system-design.md`：系统设计（子系统/模块边界；通常一份）
+- `ai-software-engineering/01-logic/detailed-design-<module>.md`：详细设计（按子模块拆分，可多篇）
+- `ai-software-engineering/02-physical/README.md`：物理阶段**总索引**；其下按 `exe`/`dll`/`lib` 等目标分子目录，每目标含 `spec.md` 与多份 `uml-*.md`（参见 `sync-and-mapping.mdc`「02-physical」基线）
+- `ai-software-engineering/03-ops/README.md`：**用户说明书**与**开发维护说明书**（部署/运行/监控/回滚/环境变量等可并入维护侧；参见 `sync-and-mapping.mdc`「03-ops」基线）
+
+## 00-concept 最低范例集合（要求）
+
+**产品设计**（`product-design.md`）在概念阶段为**唯一**主文档；**软件设计 / 接口设计 / 数据库设计**在最低范例之外**允许**按模块或话题拆成多篇文件（命名见 `.cursor/rules/sync-and-mapping.mdc`）。
+
+当仓库处于初始化/内容不完整状态时，`ai-software-engineering/00-concept/` **至少应包含**以下范例文件（若缺失则创建；若已存在同名文件则不得覆盖，按“避免覆盖”策略处理）：
+
+- `product-design.md`（唯一）
+- `software-design.md`（需体现 `helloworld` 可执行程序与 `foo` 库的默认结构约定；可后续扩展多篇）
+- `database-design.md`（广义数据库：文件/嵌入式/远程；可后续扩展多篇）
+- `interface-design.md`（**仅**程序间接口：API/RPC/IPC 等；**不含** GUI 操作与窗口交互；可后续扩展多篇）
+
