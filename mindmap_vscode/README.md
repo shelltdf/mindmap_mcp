@@ -38,11 +38,17 @@
   - 开发运行（默认）：`python run.py`
   - 桌面打包（Windows 默认）：`python run.py --build-desktop --target win`
   - 其他平台目标：`--target linux` / `--target mac`（建议在对应系统构建）
+- **网页调试模式（本地 HTTP，与扩展 Webview 同源模板）**
+  - 启动：`python run_web.py`（默认 `--host 127.0.0.1`、`--port 8765`）
+  - 脚本会：`npm install`（按需）、`npm run compile`、复制 `jsmind` 到 `media/jsmind/`、执行 `scripts/gen_web_dev_html.js` 生成 `out/web_dev.html`，再在扩展根目录启动内置 HTTP 服务；**访问根路径 `http://<host>:<port>/` 即脑图主页面**（不显示目录索引；`/out/web_dev.html` 仍可直接访问）。
+  - 默认 `--browser ide`：将页面 URL 复制到剪贴板，并在终端提示在 VS Code / Cursor 中用 **命令面板 →「Simple Browser: Show」** 粘贴打开（内置网页视图，便于与扩展内 Webview 对照调试）。
+  - 其他：`--browser system` 用系统默认浏览器；`--browser edge-app`（Windows）尝试 Edge 应用窗口；`--browser none` 仅打印 URL。按 **Ctrl+C** 停止 HTTP 服务。
 
 说明：
 - 扩展模式与桌面模式互不替代，功能目标保持一致。
-- `build.py/install.py` 仍只负责 VSIX 扩展链路；`run.py` 负责桌面模式。
+- `build.py/install.py` 仍只负责 VSIX 扩展链路；`run.py` 负责桌面模式；`run_web.py` 仅用于本地网页调试，不产出安装包。
 - 桌面模式当前支持 `.mmd` / `.jm` 文件的打开、编辑、保存、另存为。
+- 网页调试模式下画布由 `out/web_dev.html` 加载，已注入 `acquireVsCodeApi` 桩，文件保存等需 IDE 的能力在浏览器中不可用或仅打日志，以调试 UI 与脚本逻辑为主。
 
 ### 多标签（多实例）
 
