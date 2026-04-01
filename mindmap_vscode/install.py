@@ -111,6 +111,10 @@ def main() -> int:
         vsix_files = sorted(out_dir.glob("*.vsix"), key=lambda p: p.stat().st_mtime, reverse=True)
         if not vsix_files:
             print(f"error: no .vsix under {out_dir}", file=sys.stderr)
+            print(
+                "hint: build the VSIX first from this directory, e.g.  python build.py",
+                file=sys.stderr,
+            )
             return 1
         vsix_path = vsix_files[0].resolve()
         print(
