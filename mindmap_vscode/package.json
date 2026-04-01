@@ -3,7 +3,7 @@
   "displayName": "Mindmap (MindmapEditor)",
   "icon": "media/icon.png",
   "description": "WYSIWYG mindmap editor inside VS Code (webview). Supports multiple formats.",
-  "version": "0.0.140",
+  "version": "0.0.149",
   "publisher": "av-ai-dev",
   "license": "MIT",
   "engines": {
@@ -191,6 +191,8 @@
   "scripts": {
     "vscode:prepublish": "npm run compile && npm run mcp:pack",
     "compile": "tsc -p ./",
+    "gen:web-dev": "node scripts/gen_web_dev_html.js 127.0.0.1 8765",
+    "watch": "tsc -p ./ --watch",
     "mcp:pack": "npm install --prefix mcp-server && npm run build --prefix mcp-server"
   },
   "devDependencies": {

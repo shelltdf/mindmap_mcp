@@ -40,7 +40,10 @@
   - 其他平台目标：`--target linux` / `--target mac`（建议在对应系统构建）
 - **网页调试模式（本地 HTTP，与扩展 Webview 同源模板）**
   - 启动：`python run_web.py`（默认 `--host 127.0.0.1`、`--port 8765`）
+  - **热更新**：默认后台运行 `npm run watch`（`tsc --watch`），保存 `src` 后自动编译；`panel.ts` 变更会重生成 `out/web_dev.html`；调试页会轮询 `out/web_dev_meta.json` 并自动刷新。`tsc --watch` 的终端输出会写入 **`out/web_dev_tsc_watch.log`**，避免刷屏盖住访问地址。若只要单次编译、手动刷新浏览器，可加 **`--no-watch`**。
+  - **版本号**：默认**不**修改 `package.json`；需要与打包/发布会话对齐、手动 bump 时加 **`--bump-version`**（patch +1，与 `build.py` 类似）。**网页热更新**依赖保存源码后的编译与默认 watch，**与版本号无关**。
   - 脚本会：`npm install`（按需）、`npm run compile`、复制 `jsmind` 到 `media/jsmind/`、执行 `scripts/gen_web_dev_html.js` 生成 `out/web_dev.html`，再在扩展根目录启动内置 HTTP 服务；**访问根路径 `http://<host>:<port>/` 即脑图主页面**（不显示目录索引；`/out/web_dev.html` 仍可直接访问）。
+  - **`out/web_dev.html` 不会随 `npm run compile` 自动生成**：它由 `panel.ts` 内嵌 HTML 模板经 `scripts/gen_web_dev_html.js` 写出。仅改代码、只跑 `compile` 时，请再执行 **`npm run gen:web-dev`**（或始终用 **`python run_web.py`**，启动与 watch 会负责生成/更新）。
   - 默认 `--browser ide`：将页面 URL 复制到剪贴板，并在终端提示在 VS Code / Cursor 中用 **命令面板 →「Simple Browser: Show」** 粘贴打开（内置网页视图，便于与扩展内 Webview 对照调试）。
   - 其他：`--browser system` 用系统默认浏览器；`--browser edge-app`（Windows）尝试 Edge 应用窗口；`--browser none` 仅打印 URL。按 **Ctrl+C** 停止 HTTP 服务。
 
@@ -74,8 +77,15 @@
 
 ## UI 设计
 
+### 壳层与分区（SDI + Dock）
+
+- **SDI（页面内）**：每个脑图标签对应 **一个** Webview 页面；在页面内是 **单文档界面**——**中央**为主画布客户区，**非** MDI 多子窗口。
+- **左侧 Dock**：**基础功能**区为独立 **Dock**（`#dockLeft`）：**缘条** `dock-edge` 仅放折叠/展开柄；**显示区** `dock-display` 放新建/打开/保存/另存为等按钮（与 `window-gui-documentation.mdc` 中缘条/显示区兄弟关系一致）；可折叠为窄图标列。
+- **右侧 Dock**：**多功能**属性区为独立 **Dock**（`#dockRight`）：**显示区** `dock-display`（Format / Icon 等 Tab 与内容）；**缘条** `dock-edge` 贴窗口最右，仅折叠/展开柄（DOM 顺序：`客户区 | 显示区 | 缘条`）；可折叠/展开。
+- **中间**：`jsMind` 主画布；**顶部**为页内菜单栏；**底部**为页内状态栏（含日志等）。
+
 当前界面采用“xmind 风格”控制逻辑：结构增删/移动按钮在所有支持格式下都已隐藏（但保留快捷键交互，如 `Enter/Tab/粘贴文本` 建节点）。
-默认状态（明确）：左侧工具栏与右侧属性区在打开编辑器时即为最小化（缩小）模式，需手动展开后才显示完整内容。
+默认状态（明确）：**左侧**基础 Dock 与 **右侧**多功能 Dock 在打开编辑器时即为最小化（缩小）模式，需手动展开后才显示完整内容。
 中间编辑区域（`jsMind canvas`）默认背景颜色为深灰色。
 
 UI 示意图（左侧垂直工具栏 + 中间 jsMind canvas + 右侧属性区域）：
@@ -228,9 +238,11 @@ Language
 
 ## 状态栏功能说明：
 - 用于显示当前编辑状态与选中信息（例如“选中：xxx”、就绪/提示等）
-- 当选中节点变化、进入/退出编辑动作、或 Webview 初始化完成时，会同步更新状态栏文案
+- **日志窗口**：点击状态栏（除缩放百分比、保存状态灯外）打开 **Log** 对话框，展示**纯文本**的完整历史记录（带时间戳与 `[INFO]` / `[ERROR]` 等级别）；提供 **复制全部**（写入剪贴板，与可见文本一致）。**Help → View Log / 查看日志** 亦可打开。记录上限约 **4000 行**（超出丢弃最旧）。与状态栏单行摘要的关系：摘要仍反映最近一条主要状态；完整历史仅在 Log 中查看。
+- 当选中节点变化、进入/退出编辑动作、或 Webview 初始化完成时，会同步更新状态栏文案并写入日志流
 - 文件操作会显示进行中提示：`新建/打开/保存/另存为`
 - 若主画布渲染失败并自动切到文本树兜底，会显示：`主画布渲染失败，已切换降级视图。`
+- 未捕获脚本错误 / `unhandledrejection` 会弹出原有提示框，并记入日志
 
 ## Webview 渲染兜底
 

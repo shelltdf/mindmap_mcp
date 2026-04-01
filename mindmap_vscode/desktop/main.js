@@ -8,6 +8,8 @@ const DIST_CORE = path.join(ROOT_DIR, 'dist', 'shared', 'mindmapCore.js');
 const PANEL_TS = path.join(ROOT_DIR, 'src', 'panel.ts');
 const JSMIND_JS = path.join(ROOT_DIR, 'media', 'jsmind', 'jsmind.js');
 const JSMIND_CSS = path.join(ROOT_DIR, 'media', 'jsmind', 'jsmind.css');
+const MINDMAP_CORE_JS = path.join(ROOT_DIR, 'media', 'mindmap-core.js');
+const ICON_PNG = path.join(ROOT_DIR, 'media', 'icon.png');
 
 function getCore() {
   try {
@@ -70,8 +72,10 @@ function makeStandaloneHtml(bootTree, ext) {
   tpl = tpl
     .replace(/\$\{cspSource\}/g, cspSource)
     .replace(/\$\{nonce\}/g, nonce)
+    .replace(/\$\{mindmapCoreUrl\}/g, webviewLikeUri(MINDMAP_CORE_JS))
     .replace(/\$\{jsmindCssUrl\}/g, webviewLikeUri(JSMIND_CSS))
     .replace(/\$\{jsmindScriptUrl\}/g, webviewLikeUri(JSMIND_JS))
+    .replace(/\$\{appTitleIconPngUrl\}/g, webviewLikeUri(ICON_PNG))
     .replace(/\$\{bootJsonForHtml\}/g, bootJsonForHtml);
   return tpl;
 }

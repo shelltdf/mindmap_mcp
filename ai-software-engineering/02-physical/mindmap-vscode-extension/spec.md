@@ -24,3 +24,8 @@
 
 - MCP 工具里的 `filePath`：**忽略**，始终使用当前聚焦面板。
 - `get_editor_state` 在无面板时**不**因 MCP 子进程缺少 token 而由桥判断——token 校验先于 method 分发；MCP 层在 token 为空时直接抛错。
+
+## 开发调试（Web，非 VSIX）
+
+- **入口脚本**：`mindmap_vscode/run_web.py`：默认**不**修改 `package.json`；可选 `--bump-version` 将 patch +1（与 `build.py` 类似）。本地起 HTTP，**根路径 `/`** 映射为 `out/web_dev.html`（由 `scripts/gen_web_dev_html.js` 自 `panel.ts` 模板生成）；不经过扩展宿主，用于 UI/脚本快速迭代。网页是否更新由源码编译与 watch/轮询驱动，与版本号无关。
+- **能力差异**：页面内注入 `acquireVsCodeApi` 桩（见生成脚本），与真实 Webview 的消息/持久化行为可能不一致，以扩展内行为为准。

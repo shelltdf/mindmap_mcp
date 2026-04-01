@@ -33,8 +33,11 @@ function defaultTree() {
 
 function makeWebDevHtml(host, port) {
   const base = `http://${host}:${port}`;
+  const mindmapCoreUrl = `${base}/media/mindmap-core.js`;
   const jsmindCssUrl = `${base}/media/jsmind/jsmind.css`;
   const jsmindScriptUrl = `${base}/media/jsmind/jsmind.js`;
+  /** 与 VS Code webview 中 asWebviewUri(media/icon.png) 等价，供标题栏 <img> 使用 */
+  const appTitleIconPngUrl = `${base}/media/icon.png`;
   const nonce = crypto.randomBytes(8).toString('hex');
   const cspSource = `${base} data:`;
   const bootJsonForHtml = JSON.stringify({
@@ -47,13 +50,16 @@ function makeWebDevHtml(host, port) {
   tpl = tpl
     .replace(/\$\{cspSource\}/g, cspSource)
     .replace(/\$\{nonce\}/g, nonce)
+    .replace(/\$\{mindmapCoreUrl\}/g, mindmapCoreUrl)
     .replace(/\$\{jsmindCssUrl\}/g, jsmindCssUrl)
     .replace(/\$\{jsmindScriptUrl\}/g, jsmindScriptUrl)
+    .replace(/\$\{appTitleIconPngUrl\}/g, appTitleIconPngUrl)
     .replace(/\$\{bootJsonForHtml\}/g, bootJsonForHtml);
 
   const bridge = `
     <script nonce="${nonce}">
 (function () {
+  window.__MINDMAP_BROWSER_FILE_OPS__ = true;
   if (typeof window.acquireVsCodeApi !== 'function') {
     window.acquireVsCodeApi = function () {
       return {
@@ -78,7 +84,34 @@ function makeWebDevHtml(host, port) {
   if (pos < 0) {
     throw new Error('Cannot find jsMind script tag for web-dev bridge injection');
   }
-  return tpl.slice(0, pos + marker.length) + bridge + tpl.slice(pos + marker.length);
+  let html = tpl.slice(0, pos + marker.length) + bridge + tpl.slice(pos + marker.length);
+  // run_web.py 在 out/web_dev_meta.json 中递增 seq；页面轮询后自动刷新（与 tsc --watch 联动）。
+  const livereload = `
+<script>
+(function () {
+  var lastSeq = null;
+  function tick() {
+    fetch('/out/web_dev_meta.json?cb=' + Date.now(), { cache: 'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        var s = typeof d.seq === 'number' ? d.seq : 0;
+        if (lastSeq === null) lastSeq = s;
+        else if (s > lastSeq) {
+          lastSeq = s;
+          location.reload();
+        }
+      })
+      .catch(function () {});
+  }
+  setInterval(tick, 600);
+})();
+</script>
+`;
+  const hi = html.lastIndexOf('</html>');
+  if (hi < 0) {
+    throw new Error('no </html> in panel template');
+  }
+  return html.slice(0, hi) + livereload + html.slice(hi);
 }
 
 function main() {

@@ -5,6 +5,13 @@
 - **`.mmd` / `.jm`**：`vscode.openWith` → `mindmap.customTextEditor`（`MindmapCustomTextEditorProvider`）。
 - **`.xmind` / 无文件**：`MindmapPanel.createOrShow` Webview 面板；空白树默认主题文案随实现。
 
+## Webview 单页布局（SDI 与 Dock）
+
+- **SDI**：`panel.ts` 注入的 HTML 在 **单个** Webview 文档内排布：顶栏菜单、`mainRow`（左 Dock + 中央画布 + 右 Dock）、底栏状态栏；**一个标签页对应一份**当前脑图会话，中央画布为唯一主编辑客户区（非 MDI 子窗）。
+- **左 Dock**（`#dockLeft`）：**缘条** `dock-edge`（折叠柄）与 **显示区** `dock-display`（新建/打开/保存/另存为等）为兄弟节点；与文件/会话入口强相关。
+- **右 Dock**（`#dockRight`）：**显示区** + **缘条**（缘条贴窗口最右）；**多功能**——属性与扩展能力（Format / Icon 等 Tab，可继续加 Tab 或分区），与左侧语义分离。
+- 左右 Dock 的折叠与 `mindmapVscode.toggleDock`（最大化编辑区）联动策略见扩展 README 与 `panel.ts`。
+
 ## 多标签与复用
 
 - 不同磁盘路径：新开面板实例。

@@ -4,6 +4,8 @@ import { parseCoreMindmapText, serializeCoreMindmapTree } from '../shared/mindma
 export interface MindmapTreeNode {
   id: string;
   topic: string;
+  /** 节点扩展数据（.jm 可持久化；含画布格式/图标等） */
+  data?: Record<string, unknown>;
   children: MindmapTreeNode[];
 }
 

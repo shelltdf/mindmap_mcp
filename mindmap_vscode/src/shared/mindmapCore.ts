@@ -1,6 +1,8 @@
 export interface CoreMindmapTreeNode {
   id: string;
   topic: string;
+  /** 随 .jm 持久化；含 mmFont/mmFontSize/mmColor/mmBg/mmIcon 等（由脑图画布使用） */
+  data?: Record<string, unknown>;
   children: CoreMindmapTreeNode[];
 }
 
@@ -83,20 +85,32 @@ export function parseCoreMindmapText(text: string, ext: CoreMindmapExt): CoreMin
   if (ext === 'jm') {
     const obj = JSON.parse(text);
     if (obj && obj.root && obj.root.topic !== undefined) {
-      const toNode = (n: any): CoreMindmapTreeNode => ({
-        id: typeof n.id === 'string' ? n.id : `n_${Math.random().toString(16).slice(2)}`,
-        topic: String(n.topic ?? ''),
-        children: Array.isArray(n.children) ? n.children.map(toNode) : []
-      });
+      const toNode = (n: any): CoreMindmapTreeNode => {
+        const o: CoreMindmapTreeNode = {
+          id: typeof n.id === 'string' ? n.id : `n_${Math.random().toString(16).slice(2)}`,
+          topic: String(n.topic ?? ''),
+          children: Array.isArray(n.children) ? n.children.map(toNode) : []
+        };
+        if (n.data && typeof n.data === 'object') {
+          o.data = { ...(n.data as Record<string, unknown>) };
+        }
+        return o;
+      };
       return { root: toNode(obj.root) };
     }
     const data = obj?.data;
     if (!data) throw new Error('Unsupported .jm JSON: missing "data" field');
-    const toNode = (n: any): CoreMindmapTreeNode => ({
-      id: typeof n?.id === 'string' ? n.id : `n_${Math.random().toString(16).slice(2)}`,
-      topic: String(n?.topic ?? ''),
-      children: Array.isArray(n?.children) ? n.children.map(toNode) : []
-    });
+    const toNode = (n: any): CoreMindmapTreeNode => {
+      const o: CoreMindmapTreeNode = {
+        id: typeof n?.id === 'string' ? n.id : `n_${Math.random().toString(16).slice(2)}`,
+        topic: String(n?.topic ?? ''),
+        children: Array.isArray(n?.children) ? n.children.map(toNode) : []
+      };
+      if (n?.data && typeof n.data === 'object') {
+        o.data = { ...(n.data as Record<string, unknown>) };
+      }
+      return o;
+    };
     return { root: toNode(data) };
   }
   return parseMermaidMindmap(text);
@@ -104,11 +118,17 @@ export function parseCoreMindmapText(text: string, ext: CoreMindmapExt): CoreMin
 
 export function serializeCoreMindmapTree(tree: CoreMindmapTree, ext: CoreMindmapExt): string {
   if (ext === 'jm') {
-    const toJmNode = (node: CoreMindmapTreeNode): any => ({
-      id: node.id,
-      topic: node.topic,
-      children: (node.children || []).map(toJmNode)
-    });
+    const toJmNode = (node: CoreMindmapTreeNode): any => {
+      const o: any = {
+        id: node.id,
+        topic: node.topic,
+        children: (node.children || []).map(toJmNode)
+      };
+      if (node.data && typeof node.data === 'object' && Object.keys(node.data).length > 0) {
+        o.data = JSON.parse(JSON.stringify(node.data));
+      }
+      return o;
+    };
     return (
       JSON.stringify(
         {

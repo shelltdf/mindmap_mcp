@@ -1660,8 +1660,15 @@ export class MindmapPanel {
     }).replace(/</g, '\\u003c');
 
     // Offline: load jsMind assets from extension bundle.
+    const mindmapCoreUrl = webview
+      .asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'mindmap-core.js'))
+      .toString();
     const jsmindScriptUrl = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'jsmind', 'jsmind.js')).toString();
     const jsmindCssUrl = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'jsmind', 'jsmind.css')).toString();
+    /** 标题栏图标：与 package.json 的 `"icon": "media/icon.png"` 同源（扩展根目录下 mindmap_vscode/media/icon.png）。 */
+    const appTitleIconPngUrl = webview
+      .asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'icon.png'))
+      .toString();
 
     return /* html */ `<!DOCTYPE html>
 <html lang="zh">
@@ -1682,6 +1689,85 @@ export class MindmapPanel {
         font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;
         display: flex;
         flex-direction: column;
+      }
+      /* 顶栏：扩展图标 + 产品名（与菜单栏分离，便于识别应用） */
+      .appTitleBar {
+        flex: 0 0 auto;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 16px;
+        background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 55%, #e8edf4 100%);
+        border-bottom: 1px solid #cbd5e1;
+        box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset;
+        z-index: 31;
+      }
+      .appTitleBrand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+      }
+      .appTitleIconWrap {
+        flex: 0 0 auto;
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow:
+          0 1px 2px rgba(15, 23, 42, 0.08),
+          0 4px 12px rgba(37, 99, 235, 0.15);
+        background: linear-gradient(145deg, #fff 0%, #f1f5f9 100%);
+      }
+      .appTitleIconWrap img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        object-position: center;
+        box-sizing: border-box;
+        padding: 1px;
+      }
+      .appTitleIconWrap .appTitleIconFallback {
+        display: none;
+        width: 100%;
+        height: 100%;
+      }
+      .appTitleIconWrap.fallback-png-missing .appTitleIconImg { display: none; }
+      .appTitleIconWrap.fallback-png-missing .appTitleIconFallback { display: block; }
+      .appTitleTextCol {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: center;
+        gap: 2px;
+        min-width: 0;
+      }
+      .appTitleName {
+        font-size: 1.125rem;
+        font-weight: 750;
+        letter-spacing: -0.035em;
+        line-height: 1.2;
+        color: #0f172a;
+        background: linear-gradient(105deg, #0f172a 0%, #1d4ed8 45%, #6366f1 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      @supports not (background-clip: text) {
+        .appTitleName {
+          color: #1e3a8a;
+          background: none;
+          -webkit-text-fill-color: unset;
+        }
+      }
+      .appTitleSub {
+        font-size: 0.6875rem;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: #64748b;
       }
       .mainRow {
         flex: 1 1 auto;
@@ -1748,59 +1834,64 @@ export class MindmapPanel {
         color: #9ca3af;
         cursor: not-allowed;
       }
-      /* Left vertical toolbar */
-      .vtoolbar {
-        width: 260px;
-        min-width: 260px;
-        padding: 10px 10px;
-        border-right: 1px solid #e5e7eb;
-        background: #dce1e8;
+      /* 主菜单下方的横向工具栏（基础文件操作） */
+      .htoolbar {
+        flex: 0 0 auto;
         display: flex;
-        flex-direction: column;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
         gap: 8px;
-        overflow: auto;
+        padding: 8px 10px;
+        border-bottom: 1px solid #e5e7eb;
+        background: #dce1e8;
       }
-      .vtoolbar button {
-        padding: 6px 10px;
+      .htoolbar button {
+        box-sizing: border-box;
+        padding: 0;
+        min-width: 36px;
+        width: 36px;
+        height: 36px;
         border-radius: 8px;
         border: 1px solid #d1d5db;
-        background: white;
+        background: #ffffff;
         cursor: pointer;
-        width: 100%;
-        text-align: center;
-        font-size: 16px;
+        font-size: 18px;
+        font-weight: 600;
         line-height: 1;
-        min-height: 36px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
       }
-      .vtoolbar button:hover { background: #f9fafb; }
+      .htoolbar button:hover {
+        background: #f9fafb;
+      }
 
-      .toolbarToggle {
+      .dock-edge {
+        flex: 0 0 22px;
+        width: 22px;
+        min-width: 22px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 8px 2px;
+        box-sizing: border-box;
+        border-right: none;
+        border-left: 1px solid #c5cad3;
+        background: #cfd6e0;
+      }
+      .dock-edge-btn {
         width: 100%;
-        padding: 6px 10px;
+        min-height: 36px;
+        padding: 4px 0;
         border-radius: 8px;
         border: 1px solid #d1d5db;
         background: #f3f4f6;
         cursor: pointer;
         font-weight: 700;
-      }
-
-      /* Collapsed toolbar (icon-only). */
-      .vtoolbar.collapsed {
-        width: 56px;
-        min-width: 56px;
-        padding: 10px 6px;
-        align-items: center;
-      }
-      .vtoolbar.collapsed button {
-        width: 40px;
-        height: 40px;
-        padding: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
-        overflow: hidden;
-        white-space: nowrap;
+        font-size: 14px;
+        line-height: 1.1;
+        flex: 0 0 auto;
       }
 
       /* Keep a 16:9-ish canvas on the right side. */
@@ -1918,67 +2009,375 @@ export class MindmapPanel {
       #jsmind_container::-webkit-scrollbar { display: none; }
       #jsmind_container { scrollbar-width: none; -ms-overflow-style: none; }
 
-      /* Right attributes panel (Format/Icon tabs). */
-      .attrPanel {
-        width: 220px;
-        min-width: 220px;
-        padding: 10px 10px;
-        border-left: 1px solid #e5e7eb;
-        background: #dce1e8;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        overflow: hidden;
-      }
-
-      .attrTabs {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-      }
-      .attrTab {
+      /* 右侧 Dock 容器：纵向叠放多个 Dock；折叠时缘条在右侧上下排列 */
+      .dock-right-stack {
         flex: 0 0 auto;
-        width: 100%;
-        padding: 6px 10px;
-        border-radius: 8px;
-        border: 1px solid #d1d5db;
-        background: white;
-        cursor: pointer;
-        font-weight: 600;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: flex-start;
+        align-self: stretch;
+        min-height: 0;
+        height: 100%;
+        max-height: 100%;
+        overflow-x: hidden;
+        overflow-y: auto;
+        background: #dce1e8;
       }
-      .attrTab.active {
-        background: #f3f4f6;
+      /* 每个 Dock：[ 画布侧显示区 | 缘条 ]；展开时分摊纵向剩余高度 */
+      .dock-right {
+        flex: 0 0 auto;
+        display: flex;
+        flex-direction: row;
+        align-items: stretch;
+        min-height: 0;
+        min-width: 0;
+        background: #dce1e8;
       }
-
-      .attrPanelToggle {
-        width: 100%;
-        padding: 6px 10px;
-        border-radius: 8px;
-        border: 1px solid #d1d5db;
-        background: #f3f4f6;
-        cursor: pointer;
+      /* 折叠后整行只占缘条宽度，并靠栈的右侧（窗口右缘），避免缘条漂在列中间 */
+      .dock-right-stack .dock-right.collapsed {
+        flex: 0 0 auto;
+        align-self: flex-end;
+        width: fit-content;
+        max-width: 100%;
+        align-items: flex-start;
+      }
+      /* 未最大化：展开高度随内容，不强行占满整列（避免短内容也撑满半屏） */
+      .dock-right-stack .dock-right:not(.collapsed):not(.dock-maximized) {
+        flex: 0 0 auto;
+        min-height: 0;
+      }
+      .dock-titlebar {
+        flex: 0 0 auto;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 6px 8px;
+        background: linear-gradient(180deg, #e2e6ee 0%, #d5dbe6 100%);
+        border-bottom: 1px solid #b8c0ce;
+        border-radius: 0;
+        font-size: 12px;
         font-weight: 700;
+        color: #1f2937;
+        min-height: 32px;
+        box-sizing: border-box;
       }
-
-      .attrPanel.collapsed {
-        width: 56px;
-        min-width: 56px;
-        padding: 10px 6px;
+      .dock-title {
+        flex: 1 1 auto;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
-      .attrPanel.collapsed .attrContent { display: none; }
-      .attrPanel.collapsed .attrTab { padding: 6px 0; }
-      .attrPanel.collapsed .attrPanelToggle { width: 40px; }
+      .dock-title-actions {
+        flex: 0 0 auto;
+        display: inline-flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 4px;
+      }
+      .dock-title-btn {
+        width: 26px;
+        height: 24px;
+        padding: 0;
+        line-height: 1;
+        border-radius: 6px;
+        border: 1px solid #9ca3af;
+        background: #f3f4f6;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 700;
+        color: #374151;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .dock-title-btn:hover {
+        background: #e5e7eb;
+      }
+      .dock-right .dock-display {
+        flex: 0 0 auto;
+        width: 198px;
+        min-width: 198px;
+        padding: 0;
+        border-left: 1px solid #e5e7eb;
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        overflow: hidden;
+        box-sizing: border-box;
+        transition: width 0.12s ease, min-width 0.12s ease, padding 0.12s ease, opacity 0.12s ease;
+      }
+      /* 最大化时：显示区在横轴上仍固定宽度，纵向上 stretch 占满该 Dock 行高（父级已 flex:1 分到高度） */
+      .dock-right.dock-maximized:not(.collapsed) .dock-display {
+        flex: 0 0 auto;
+        align-self: stretch;
+        min-height: 0;
+      }
+      .dock-right .dock-display > .attrContent {
+        margin: 8px 10px 10px 10px;
+      }
+      .dock-right-stack .dock-right.dock-maximized:not(.collapsed) {
+        flex: 1 1 auto !important;
+        min-height: 0;
+      }
+      .dock-right-stack .dock-right.dock-peer-squash:not(.collapsed) {
+        flex: 0 0 auto !important;
+        min-height: 0;
+        max-height: 42%;
+      }
+      .dock-right.collapsed .dock-display {
+        width: 0 !important;
+        min-width: 0 !important;
+        max-width: 0 !important;
+        height: 0 !important;
+        min-height: 0 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        overflow: hidden !important;
+        opacity: 0;
+        pointer-events: none;
+        border: none !important;
+        align-self: flex-start;
+        flex: 0 0 0;
+      }
+      /* 折叠后缘条只占按钮高度，内容顶对齐；横向上按钮贴缘条右侧 */
+      .dock-right.collapsed .dock-edge {
+        justify-content: flex-start;
+        align-items: flex-end;
+        padding-top: 4px;
+        padding-bottom: 4px;
+        align-self: stretch;
+        height: auto;
+        min-height: 0;
+      }
 
       .attrContent {
         flex: 1 1 auto;
+        min-height: 0;
         overflow: auto;
         border-radius: 10px;
         border: 1px solid #e5e7eb;
         padding: 10px;
+        background: #fff;
       }
-      .attrContentSection { display: none; }
-      .attrContentSection.active { display: block; }
       .attrItem { font-size: 13px; color: #374151; margin-bottom: 10px; }
+      .dock-form-hint {
+        font-size: 12px;
+        color: #6b7280;
+        margin-bottom: 10px;
+        line-height: 1.35;
+      }
+      .dock-form-row {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        margin-bottom: 10px;
+      }
+      .dock-form-label {
+        font-size: 11px;
+        font-weight: 600;
+        color: #4b5563;
+      }
+      .dock-form-row select,
+      .dock-form-row input[type='number'] {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        padding: 4px 6px;
+        border-radius: 6px;
+        border: 1px solid #d1d5db;
+        font-size: 12px;
+      }
+      .dock-form-row input[type='color'] {
+        width: 100%;
+        height: 28px;
+        padding: 0;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+      .dock-form-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 4px;
+      }
+      .dock-apply-btn {
+        flex: 1 1 auto;
+        min-width: 72px;
+        padding: 6px 8px;
+        font-size: 12px;
+        font-weight: 600;
+        border-radius: 8px;
+        border: 1px solid #9ca3af;
+        background: #f3f4f6;
+        cursor: pointer;
+        color: #374151;
+      }
+      .dock-apply-btn:hover {
+        background: #e5e7eb;
+      }
+      .dock-apply-btn.dock-secondary {
+        background: #fff;
+      }
+      .dock-form.dock-disabled {
+        opacity: 0.55;
+        pointer-events: none;
+      }
+      .dock-icon-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+      }
+      .dock-icon-btn {
+        min-height: 36px;
+        padding: 4px 2px;
+        border-radius: 8px;
+        border: 1px solid #d1d5db;
+        background: #f9fafb;
+        cursor: pointer;
+        font-size: 18px;
+        line-height: 1.2;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+      }
+      .dock-icon-btn:hover {
+        background: #e5e7eb;
+      }
+      .dock-icon-btn.mm-selected {
+        border-color: #2563eb;
+        background: #dbeafe;
+        box-shadow: 0 0 0 1px #2563eb inset;
+      }
+      .dock-icon-btn .dock-icon-label {
+        font-size: 9px;
+        font-weight: 600;
+        color: #4b5563;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      jmnode.mm-icon-none::before,
+      .jmnode.mm-icon-none::before {
+        content: none !important;
+      }
+      jmnode.mm-icon-star::before,
+      .jmnode.mm-icon-star::before {
+        content: '⭐';
+        margin-right: 4px;
+      }
+      jmnode.mm-icon-flag::before,
+      .jmnode.mm-icon-flag::before {
+        content: '🚩';
+        margin-right: 4px;
+      }
+      jmnode.mm-icon-bulb::before,
+      .jmnode.mm-icon-bulb::before {
+        content: '💡';
+        margin-right: 4px;
+      }
+      jmnode.mm-icon-book::before,
+      .jmnode.mm-icon-book::before {
+        content: '📖';
+        margin-right: 4px;
+      }
+      jmnode.mm-icon-check::before,
+      .jmnode.mm-icon-check::before {
+        content: '✅';
+        margin-right: 4px;
+      }
+      jmnode.mm-icon-warn::before,
+      .jmnode.mm-icon-warn::before {
+        content: '⚠️';
+        margin-right: 4px;
+      }
+      jmnode.mm-icon-heart::before,
+      .jmnode.mm-icon-heart::before {
+        content: '❤️';
+        margin-right: 4px;
+      }
+      jmnode.mm-icon-rocket::before,
+      .jmnode.mm-icon-rocket::before {
+        content: '🚀';
+        margin-right: 4px;
+      }
+      jmnode.mm-icon-pin::before,
+      .jmnode.mm-icon-pin::before {
+        content: '📌';
+        margin-right: 4px;
+      }
+
+      /* 插入菜单：嵌入类型（节点 data.mmEmbed），左侧色条 + 前缀图标 */
+      jmnode.mm-embed-image,
+      .jmnode.mm-embed-image {
+        box-shadow: inset 3px 0 0 #3b82f6;
+      }
+      jmnode.mm-embed-image::before,
+      .jmnode.mm-embed-image::before {
+        content: '🖼';
+        margin-right: 4px;
+      }
+      jmnode.mm-embed-text,
+      .jmnode.mm-embed-text {
+        box-shadow: inset 3px 0 0 #64748b;
+      }
+      jmnode.mm-embed-text::before,
+      .jmnode.mm-embed-text::before {
+        content: '📝';
+        margin-right: 4px;
+      }
+      jmnode.mm-embed-whiteboard,
+      .jmnode.mm-embed-whiteboard {
+        box-shadow: inset 3px 0 0 #8b5cf6;
+      }
+      jmnode.mm-embed-whiteboard::before,
+      .jmnode.mm-embed-whiteboard::before {
+        content: '🖍';
+        margin-right: 4px;
+      }
+      jmnode.mm-embed-video,
+      .jmnode.mm-embed-video {
+        box-shadow: inset 3px 0 0 #dc2626;
+      }
+      jmnode.mm-embed-video::before,
+      .jmnode.mm-embed-video::before {
+        content: '🎬';
+        margin-right: 4px;
+      }
+      jmnode.mm-embed-audio,
+      .jmnode.mm-embed-audio {
+        box-shadow: inset 3px 0 0 #059669;
+      }
+      jmnode.mm-embed-audio::before,
+      .jmnode.mm-embed-audio::before {
+        content: '🎵';
+        margin-right: 4px;
+      }
+      jmnode.mm-embed-gltf,
+      .jmnode.mm-embed-gltf {
+        box-shadow: inset 3px 0 0 #d97706;
+      }
+      jmnode.mm-embed-gltf::before,
+      .jmnode.mm-embed-gltf::before {
+        content: '🧊';
+        margin-right: 4px;
+      }
+      jmnode.mm-embed-table,
+      .jmnode.mm-embed-table {
+        box-shadow: inset 3px 0 0 #0d9488;
+      }
+      jmnode.mm-embed-table::before,
+      .jmnode.mm-embed-table::before {
+        content: '⊞';
+        margin-right: 4px;
+      }
 
       /* Bottom status bar */
       .statusbar {
@@ -2025,14 +2424,114 @@ export class MindmapPanel {
       .statusbarSaveLight.red {
         background: #ef4444;
       }
-      .statusbarZoom {
-        color: #374151;
-        font-weight: 600;
+      /* 画布左下角：上排 适应 / 根节点 / 还原，下排 − / 百分比 / +（同宽）；中间双击还原 100% 并居中根节点 */
+      .canvas-zoom-stack {
+        position: absolute;
+        left: 10px;
+        bottom: 10px;
+        /* 高于 fallbackTree(9) / rootMirror(10)，避免遮挡导致无法点击 */
+        z-index: 12;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 5px;
+        pointer-events: auto;
         user-select: none;
-        cursor: default;
       }
-      .statusbarZoom:hover {
-        text-decoration: underline;
+      .canvas-zoom-actions {
+        display: flex;
+        flex-direction: row;
+        align-items: stretch;
+        gap: 5px;
+        width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+      }
+      .canvas-zoom-action-btn {
+        flex: 1 1 0;
+        min-width: 0;
+        padding: 4px 4px;
+        margin: 0;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.72);
+        color: #111827;
+        font-size: 11px;
+        font-weight: 600;
+        line-height: 1.2;
+        cursor: pointer;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+      }
+      .canvas-zoom-action-btn:hover {
+        background: rgba(255, 255, 255, 0.92);
+      }
+      .canvas-zoom-action-btn:active {
+        background: rgba(0, 0, 0, 0.06);
+      }
+      .canvas-zoom-badge {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+        padding: 4px 6px;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        line-height: 1.25;
+        color: #111827;
+        background: rgba(255, 255, 255, 0.55);
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        user-select: none;
+        pointer-events: auto;
+        width: 100%;
+        box-sizing: border-box;
+      }
+      .canvas-zoom-badge:hover {
+        background: rgba(255, 255, 255, 0.75);
+      }
+      .canvas-zoom-btn {
+        flex: 0 0 auto;
+        width: 24px;
+        height: 24px;
+        padding: 0;
+        margin: 0;
+        border: none;
+        border-radius: 6px;
+        background: rgba(0, 0, 0, 0.06);
+        color: #111827;
+        font-size: 16px;
+        font-weight: 700;
+        line-height: 1;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .canvas-zoom-btn:hover {
+        background: rgba(0, 0, 0, 0.12);
+      }
+      .canvas-zoom-btn:active {
+        background: rgba(0, 0, 0, 0.18);
+      }
+      .canvas-zoom-value {
+        flex: 0 0 auto;
+        min-width: 40px;
+        text-align: center;
+        padding: 2px 4px;
+        cursor: default;
+        border-radius: 4px;
+      }
+      .canvas-zoom-value:hover {
+        background: rgba(0, 0, 0, 0.06);
       }
       .statusIcon {
         display: inline-flex;
@@ -2050,6 +2549,48 @@ export class MindmapPanel {
       }
       .statusbar.error .statusIcon {
         visibility: visible;
+      }
+      .statusbarClickable {
+        cursor: pointer;
+      }
+      .logDialogCard {
+        width: min(720px, calc(100vw - 32px));
+        max-height: min(86vh, 640px);
+        background: #ffffff;
+        border: 1px solid #d1d5db;
+        border-radius: 10px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+      .logDialogBody {
+        padding: 0 12px 12px 12px;
+        flex: 1 1 auto;
+        min-height: 0;
+      }
+      .logPre {
+        margin: 0;
+        padding: 10px 12px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 11px;
+        line-height: 1.4;
+        white-space: pre-wrap;
+        word-break: break-word;
+        color: #111827;
+        background: #f3f4f6;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        min-height: 120px;
+        max-height: min(58vh, 480px);
+        overflow: auto;
+      }
+      .logDialogActions {
+        justify-content: flex-end;
+        gap: 8px;
+      }
+      .logDialogActions button {
+        min-width: 88px;
       }
 
       /* Right-click context menus */
@@ -2146,6 +2687,39 @@ export class MindmapPanel {
     </style>
   </head>
   <body>
+    <header class="appTitleBar" id="appTitleBar" role="banner">
+      <div class="appTitleBrand">
+        <div class="appTitleIconWrap" id="appTitleIconWrap" aria-hidden="true">
+          <img
+            class="appTitleIconImg"
+            id="appTitleIconImg"
+            src="${appTitleIconPngUrl}"
+            width="40"
+            height="40"
+            alt=""
+            decoding="async"
+          />
+          <svg class="appTitleIconFallback" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <defs>
+              <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#2563eb"/>
+                <stop offset="100%" style="stop-color:#7c3aed"/>
+              </linearGradient>
+            </defs>
+            <rect width="40" height="40" rx="10" fill="url(#g1)"/>
+            <circle cx="20" cy="12" r="4" fill="#fff" opacity="0.95"/>
+            <circle cx="10" cy="26" r="3.2" fill="#fff" opacity="0.9"/>
+            <circle cx="20" cy="28" r="3.2" fill="#fff" opacity="0.9"/>
+            <circle cx="30" cy="26" r="3.2" fill="#fff" opacity="0.9"/>
+            <path d="M20 16v4M20 20l-8 4M20 20l8 4" stroke="#fff" stroke-width="1.8" stroke-linecap="round" opacity="0.85" fill="none"/>
+          </svg>
+        </div>
+        <div class="appTitleTextCol">
+          <span class="appTitleName" id="appTitleName">Mindmap</span>
+          <span class="appTitleSub" id="appTitleSub">MindmapEditor</span>
+        </div>
+      </div>
+    </header>
     <div class="menubar">
       <details>
         <summary id="sumFile">File</summary>
@@ -2179,13 +2753,38 @@ export class MindmapPanel {
       <details>
         <summary id="sumInsert">Insert</summary>
         <div class="menuItems">
-          <button id="menuInsertDisabled" disabled>Add / Delete / Move</button>
+          <button type="button" id="menuInsertImage">Insert image</button>
+          <button type="button" id="menuInsertText">Insert text</button>
+          <button type="button" id="menuInsertWhiteboard">Insert whiteboard</button>
+          <button type="button" id="menuInsertVideo">Insert video</button>
+          <button type="button" id="menuInsertAudio">Insert audio</button>
+          <button type="button" id="menuInsertGltf">Insert glTF</button>
+          <button type="button" id="menuInsertTable">Insert table</button>
         </div>
       </details>
       <details>
         <summary id="sumModify">Modify</summary>
         <div class="menuItems">
           <button id="menuModifyPlaceholder" disabled>(none)</button>
+        </div>
+      </details>
+      <details>
+        <summary id="sumTools">Tools</summary>
+        <div class="menuItems">
+          <button id="menuToolsNone" disabled>(none)</button>
+        </div>
+      </details>
+      <details>
+        <summary id="sumWindow">Window</summary>
+        <div class="menuItems">
+          <button id="menuToggleDock">Mindmap: Toggle Dock Maximized</button>
+        </div>
+      </details>
+      <details>
+        <summary id="sumLanguage">Language</summary>
+        <div class="menuItems">
+          <button id="menuLangZh">中文</button>
+          <button id="menuLangEn">English</button>
         </div>
       </details>
       <details>
@@ -2210,41 +2809,22 @@ export class MindmapPanel {
         </div>
       </details>
       <details>
-        <summary id="sumTools">Tools</summary>
-        <div class="menuItems">
-          <button id="menuToolsNone" disabled>(none)</button>
-        </div>
-      </details>
-      <details>
-        <summary id="sumWindow">Window</summary>
-        <div class="menuItems">
-          <button id="menuToggleDock">Mindmap: Toggle Dock Maximized</button>
-        </div>
-      </details>
-      <details>
         <summary id="sumHelp">Help</summary>
         <div class="menuItems">
-          <button id="menuHelpStatusTip" disabled>状态栏提示</button>
+          <button id="menuOpenLog">View Log</button>
           <button id="menuToggleDebugBounds">Toggle Debug Bounds</button>
-        </div>
-      </details>
-      <details>
-        <summary id="sumLanguage">Language</summary>
-        <div class="menuItems">
-          <button id="menuLangZh">中文</button>
-          <button id="menuLangEn">English</button>
         </div>
       </details>
     </div>
 
+    <div class="htoolbar" id="htoolbar" role="toolbar" aria-label="Toolbar">
+      <button type="button" id="btnNew">＋</button>
+      <button type="button" id="btnOpen">📂</button>
+      <button type="button" id="btnSave">💾</button>
+      <button type="button" id="btnSaveAs">🖫</button>
+    </div>
+
     <div class="mainRow">
-      <div class="vtoolbar" id="vtoolbar">
-        <button id="btnToggleToolbar" class="toolbarToggle" type="button" title="Collapse/Expand Toolbar"><<</button>
-        <button id="btnNew">＋</button>
-        <button id="btnOpen">📂</button>
-        <button id="btnSave">💾</button>
-        <button id="btnSaveAs">🖫</button>
-      </div>
       <div class="canvas_wrap" id="canvasWrap" tabindex="0">
         <div class="gridLayer" id="gridLayer"></div>
         <div class="fallbackTree hidden" id="fallbackTree"></div>
@@ -2256,32 +2836,87 @@ export class MindmapPanel {
           <span class="debugBoundsLabel" id="debugInnerLabel">Inner region</span>
         </div>
         <div id="jsmind_container"></div>
+        <div id="canvasZoomStack" class="canvas-zoom-stack" role="group">
+          <div class="canvas-zoom-actions">
+            <button type="button" id="canvasZoomFit" class="canvas-zoom-action-btn" tabindex="0">Fit</button>
+            <button type="button" id="canvasZoomCenterRoot" class="canvas-zoom-action-btn" tabindex="0">Root</button>
+            <button type="button" id="canvasZoomReset" class="canvas-zoom-action-btn" tabindex="0">还原</button>
+          </div>
+          <div id="canvasZoomBadge" class="canvas-zoom-badge" role="group">
+            <button type="button" id="canvasZoomOut" class="canvas-zoom-btn" tabindex="0">−</button>
+            <span id="canvasZoomValue" class="canvas-zoom-value">100%</span>
+            <button type="button" id="canvasZoomIn" class="canvas-zoom-btn" tabindex="0">+</button>
+          </div>
+        </div>
       </div>
-      <div class="attrPanel" id="attrPanel">
-        <button id="btnToggleAttrPanel" class="attrPanelToggle" type="button" title="Collapse/Expand Attributes Panel">>></button>
-        <div class="attrTabs">
-          <button class="attrTab active" id="tabFormat" data-tab="format" title="Format">⚙</button>
-          <button class="attrTab" id="tabIcon" data-tab="icon" title="Icon">🖼</button>
-        </div>
-        <div class="attrContent">
-          <div class="attrContentSection active" id="tabContent-format">
-            <div class="attrItem"><b>Selected node</b> : Apply Title</div>
-            <div class="attrItem">Expand / Collapse / Toggle</div>
-            <div class="attrItem">Expand All / Theme / Save (global)</div>
+      <div class="dock-right-stack" id="dockRightStack">
+        <aside class="dock dock-right" id="dockFormat" aria-label="Format dock">
+          <div class="dock-display">
+            <div class="dock-titlebar">
+              <span class="dock-title" id="dockFormatTitle">Format</span>
+              <div class="dock-title-actions">
+                <button type="button" class="dock-title-btn" id="btnDockFormatCollapse" title="Collapse">−</button>
+                <button type="button" class="dock-title-btn" id="btnDockFormatMaximize" title="Maximize">□</button>
+              </div>
+            </div>
+            <div class="attrContent" id="dockFormatBody">
+              <div class="dock-form" id="dockFormatForm">
+                <div class="dock-form-hint" id="dockFormatHint">—</div>
+                <label class="dock-form-row"
+                  ><span class="dock-form-label" id="dockLblFont">Font</span>
+                  <select id="dockInputFont"></select
+                ></label>
+                <label class="dock-form-row"
+                  ><span class="dock-form-label" id="dockLblSize">Size</span>
+                  <input type="number" id="dockInputFontSize" min="8" max="72" step="1" />
+                </label>
+                <label class="dock-form-row"
+                  ><span class="dock-form-label" id="dockLblColor">Text color</span>
+                  <input type="color" id="dockInputColor" value="#333333" />
+                </label>
+                <label class="dock-form-row"
+                  ><span class="dock-form-label" id="dockLblBg">Background</span>
+                  <input type="color" id="dockInputBg" value="#ffffff" />
+                </label>
+                <div class="dock-form-actions">
+                  <button type="button" id="dockBtnApplyFormat" class="dock-apply-btn">Apply</button>
+                  <button type="button" id="dockBtnResetFormat" class="dock-apply-btn dock-secondary">
+                    Reset
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="attrContentSection" id="tabContent-icon">
-            <div class="attrItem">Icon editing is not implemented yet.</div>
+          <div class="dock-edge">
+            <button type="button" id="btnToggleDockFormat" class="dock-edge-btn" title="Format">⚙</button>
           </div>
-        </div>
+        </aside>
+        <aside class="dock dock-right" id="dockIcon" aria-label="Icon dock">
+          <div class="dock-display">
+            <div class="dock-titlebar">
+              <span class="dock-title" id="dockIconTitle">Icon</span>
+              <div class="dock-title-actions">
+                <button type="button" class="dock-title-btn" id="btnDockIconCollapse" title="Collapse">−</button>
+                <button type="button" class="dock-title-btn" id="btnDockIconMaximize" title="Maximize">□</button>
+              </div>
+            </div>
+            <div class="attrContent" id="dockIconBody">
+              <div class="dock-form-hint" id="dockIconHint">—</div>
+              <div class="dock-icon-grid" id="dockIconGrid"></div>
+            </div>
+          </div>
+          <div class="dock-edge">
+            <button type="button" id="btnToggleDockIcon" class="dock-edge-btn" title="Icon">🖼</button>
+          </div>
+        </aside>
       </div>
     </div>
-    <div class="statusbar" id="statusbar">
+    <div class="statusbar statusbarClickable" id="statusbar">
       <div class="statusbarLeft">
         <span id="statusIcon" class="statusIcon">⛔</span>
         <span id="statusbarText">就绪</span>
       </div>
       <div class="statusbarRight">
-        <span id="statusbarZoom" class="statusbarZoom" title="双击还原缩放">100%</span>
         <span id="statusbarSaveLight" class="statusbarSaveLight green" role="img" aria-label="save state"></span>
       </div>
     </div>
@@ -2291,6 +2926,19 @@ export class MindmapPanel {
         <div class="dialogBody" id="errorDialogMessage">-</div>
         <div class="dialogActions">
           <button id="errorDialogConfirm" type="button">确认</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="dialogOverlay hidden" id="logDialog" style="z-index: 96;">
+      <div class="logDialogCard" role="dialog" aria-modal="true" aria-labelledby="logDialogTitle">
+        <div class="dialogTitle" id="logDialogTitle">Log</div>
+        <div class="logDialogBody">
+          <pre id="logFullText" class="logPre"></pre>
+        </div>
+        <div class="dialogActions logDialogActions">
+          <button id="logCopyBtn" type="button">Copy all</button>
+          <button id="logCloseBtn" type="button">Close</button>
         </div>
       </div>
     </div>
@@ -2314,11 +2962,52 @@ export class MindmapPanel {
       <button id="ctxResetZoom">还原缩放比例</button>
     </div>
 
+    <script nonce="${nonce}" src="${mindmapCoreUrl}"></script>
     <script nonce="${nonce}" src="${jsmindScriptUrl}"></script>
     <script nonce="${nonce}">
       const __MINDMAP_BOOT__ = ${bootJsonForHtml};
       (function () {
-        const vscode = acquireVsCodeApi();
+        // acquireVsCodeApi 仅 VS Code/Cursor Webview 提供；无宿主时用占位 API，并由 __mindmapBrowserDispatch 在网页中实现新建/打开/保存。
+        if (typeof acquireVsCodeApi !== 'function') {
+          window.__MINDMAP_BROWSER_FILE_OPS__ = true;
+        }
+        var _vscodeApi = typeof acquireVsCodeApi === 'function' ? acquireVsCodeApi() : null;
+        function forwardToHost(msg) {
+          if (_vscodeApi && _vscodeApi.postMessage) {
+            try {
+              _vscodeApi.postMessage(msg);
+            } catch (_) {}
+          } else {
+            try {
+              console.debug('[mindmap] postMessage (no VS Code host)', msg);
+            } catch (_) {}
+          }
+        }
+        var vscode = {
+          postMessage: function (msg) {
+            try {
+              if (
+                window.__MINDMAP_BROWSER_FILE_OPS__ &&
+                typeof window.__mindmapBrowserDispatch === 'function' &&
+                window.__mindmapBrowserDispatch(msg)
+              ) {
+                return;
+              }
+            } catch (e) {
+              try {
+                var em = e && e.message ? e.message : String(e);
+                appendLog('error', 'postMessage dispatch: ' + em);
+              } catch (_) {}
+            }
+            forwardToHost(msg);
+          },
+          setState: function (s) {
+            return _vscodeApi && _vscodeApi.setState ? _vscodeApi.setState(s) : undefined;
+          },
+          getState: function () {
+            return _vscodeApi && _vscodeApi.getState ? _vscodeApi.getState() : null;
+          }
+        };
 
         window.addEventListener('error', function (ev) {
           try {
@@ -2326,6 +3015,7 @@ export class MindmapPanel {
               ev.error && ev.error.message
                 ? ev.error.message
                 : String(ev.message || 'Script error');
+            appendLog('error', 'window.error: ' + msg);
             var el = document.getElementById('errorDialogMessage');
             var ov = document.getElementById('errorDialog');
             var title = document.getElementById('errorDialogTitle');
@@ -2346,6 +3036,7 @@ export class MindmapPanel {
               ev.reason && ev.reason.message
                 ? ev.reason.message
                 : String(ev.reason || 'Unhandled rejection');
+            appendLog('error', 'unhandledrejection: ' + msg);
             var el = document.getElementById('errorDialogMessage');
             var ov = document.getElementById('errorDialog');
             var title = document.getElementById('errorDialogTitle');
@@ -2402,8 +3093,11 @@ export class MindmapPanel {
 
         /** @type {any} */
         let jm = null;
+        /** 最近一次 init / setTree 的树数据；jsMind 未就绪时保存/另存为仍可用（如降级视图）。 */
+        let lastKnownMindmapTree = null;
         /** @type {any} */
         let selectedNode = null;
+        let dockFormatIconInited = false;
         let rootId = null;
         let currentLang = 'en';
         let currentTheme = 'primary';
@@ -2415,8 +3109,73 @@ export class MindmapPanel {
 
         const statusbarEl = document.getElementById('statusbar');
         const statusbarTextEl = document.getElementById('statusbarText');
-        const statusbarZoomEl = document.getElementById('statusbarZoom');
+        const canvasZoomStackEl = document.getElementById('canvasZoomStack');
+        const canvasZoomBadgeEl = document.getElementById('canvasZoomBadge');
+        const canvasZoomValueEl = document.getElementById('canvasZoomValue');
         const statusbarSaveLightEl = document.getElementById('statusbarSaveLight');
+        const logDialogEl = document.getElementById('logDialog');
+        const logFullTextEl = document.getElementById('logFullText');
+        /** 与窗口 GUI 规则一致：统一日志流，上限约 4000 行（超出丢弃最旧）。 */
+        const LOG_MAX_LINES = 4000;
+        const logLines = [];
+
+        function logTimestamp() {
+          return new Date().toISOString().replace('T', ' ').slice(0, 19);
+        }
+
+        function appendLog(level, text) {
+          const lv = (level || 'info').toLowerCase();
+          const line =
+            '[' +
+            logTimestamp() +
+            '] [' +
+            lv.toUpperCase() +
+            '] ' +
+            String(text == null ? '' : text);
+          logLines.push(line);
+          while (logLines.length > LOG_MAX_LINES) {
+            logLines.shift();
+          }
+        }
+
+        function refreshLogPre() {
+          if (logFullTextEl) {
+            logFullTextEl.textContent = logLines.join(String.fromCharCode(10));
+          }
+        }
+
+        function scrollLogPreToBottom() {
+          if (!logFullTextEl) return;
+          logFullTextEl.scrollTop = logFullTextEl.scrollHeight;
+        }
+
+        function showLogDialog() {
+          refreshLogPre();
+          if (logDialogEl) {
+            logDialogEl.classList.remove('hidden');
+          }
+          requestAnimationFrame(function () {
+            scrollLogPreToBottom();
+            requestAnimationFrame(scrollLogPreToBottom);
+          });
+          const closeBtn = document.getElementById('logCloseBtn');
+          if (closeBtn) {
+            closeBtn.focus();
+          }
+        }
+
+        function hideLogDialog() {
+          if (logDialogEl) {
+            logDialogEl.classList.add('hidden');
+          }
+        }
+
+        function copyLogToClipboard() {
+          const text = logLines.join(String.fromCharCode(10));
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).catch(function () {});
+          }
+        }
         const fallbackTreeEl = document.getElementById('fallbackTree');
         const rootMirrorEl = document.getElementById('rootMirror');
         let saveTrafficLightState = 'green';
@@ -2456,7 +3215,50 @@ export class MindmapPanel {
             ctxCenterRoot: 'Center Root Node',
             ctxFitAll: 'Fit All',
             ctxResetZoom: 'Reset Zoom',
-            menuHelpStatusTip: 'Status Tip',
+            menuOpenLog: 'View Log',
+            logDialogTitle: 'Log',
+            logCopyAll: 'Copy all',
+            logClose: 'Close',
+            statusbarLogHint: 'Click to view full log (plain text, copy supported)',
+            zoomDblClickReset: 'Double-click to reset to 100% and center (root in view)',
+            zoomOut: 'Zoom out',
+            zoomIn: 'Zoom in',
+            zoomBadgeFit: 'Fit',
+            zoomBadgeCenterRoot: 'Root',
+            zoomBadgeReset: 'Reset',
+            zoomStackAria: 'Fit view, center root, reset zoom, and scale controls',
+            zoomControlsAria: 'Zoom controls',
+            dockFormatEdge: 'Format dock — click to expand/collapse',
+            dockIconEdge: 'Icon dock — click to expand/collapse',
+            dockPanelFormat: 'Format',
+            dockPanelIcon: 'Icon',
+            dockBtnCollapse: 'Collapse',
+            dockBtnMaximize: 'Maximize',
+            dockBtnRestore: 'Restore',
+            dockLblFont: 'Font',
+            dockLblSize: 'Size',
+            dockLblColor: 'Text color',
+            dockLblBg: 'Background',
+            dockBtnApplyFormat: 'Apply',
+            dockBtnResetFormat: 'Reset',
+            dockHintNoSelection: 'Select a node to edit format.',
+            dockHintIconNoSelection: 'Select a node to set icon.',
+            dockFontDefault: 'Default',
+            dockIconNone: 'None',
+            dockIconStar: 'Star',
+            dockIconFlag: 'Flag',
+            dockIconBulb: 'Bulb',
+            dockIconBook: 'Book',
+            dockIconCheck: 'Check',
+            dockIconWarn: 'Warn',
+            dockIconHeart: 'Heart',
+            dockIconRocket: 'Rocket',
+            dockIconPin: 'Pin',
+            htoolbarLabel: 'Toolbar',
+            appTitlePrimary: 'Mindmap',
+            appTitleSecondary: 'MindmapEditor',
+            appTitleBannerAria: 'Mindmap Editor',
+            defaultChildTopic: 'Subtopic',
             sumFile: 'File',
             sumEdit: 'Edit',
             sumView: 'View',
@@ -2482,7 +3284,24 @@ export class MindmapPanel {
             menuToggle: 'Toggle',
             menuExpandAll: 'Expand All',
             menuModifyPlaceholder: '(none)',
-            menuInsertDisabled: 'Add / Delete / Move',
+            menuInsertImage: 'Insert image',
+            menuInsertText: 'Insert text',
+            menuInsertWhiteboard: 'Insert whiteboard',
+            menuInsertVideo: 'Insert video',
+            menuInsertAudio: 'Insert audio',
+            menuInsertGltf: 'Insert glTF model',
+            menuInsertTable: 'Insert table',
+            embedPromptUrl: 'Resource URL (https:// or path):',
+            embedPromptText: 'Text content:',
+            embedPromptTable: 'Table size: rows×cols (e.g. 3x4):',
+            embedNoUrl: '(empty)',
+            embedTopicPrefix_image: '[Image]',
+            embedTopicPrefix_text: '[Text]',
+            embedTopicPrefix_whiteboard: '[Whiteboard]',
+            embedTopicPrefix_video: '[Video]',
+            embedTopicPrefix_audio: '[Audio]',
+            embedTopicPrefix_gltf: '[glTF]',
+            embedTopicPrefix_table: '[Table]',
             menuToolsNone: '(none)',
             menuToggleDock: 'Mindmap: Toggle Dock Maximized',
             menuToggleDebugBounds: 'Toggle Debug Bounds',
@@ -2531,7 +3350,50 @@ export class MindmapPanel {
             ctxCenterRoot: '根节点居正显示',
             ctxFitAll: '全部显示',
             ctxResetZoom: '还原缩放比例',
-            menuHelpStatusTip: '状态栏提示',
+            menuOpenLog: '查看日志',
+            logDialogTitle: '日志',
+            logCopyAll: '复制全部',
+            logClose: '关闭',
+            statusbarLogHint: '点击查看完整日志（纯文本，可复制）',
+            zoomDblClickReset: '双击中间数字：还原为 100% 并以视图中心对齐根节点',
+            zoomOut: '缩小',
+            zoomIn: '放大',
+            zoomBadgeFit: '适应',
+            zoomBadgeCenterRoot: '根节点',
+            zoomBadgeReset: '还原',
+            zoomStackAria: '适应画布、根节点居正、还原缩放与比例缩放',
+            zoomControlsAria: '缩放控件',
+            dockFormatEdge: '格式 Dock — 点击展开/折叠',
+            dockIconEdge: '图标 Dock — 点击展开/折叠',
+            dockPanelFormat: '格式',
+            dockPanelIcon: '图标',
+            dockBtnCollapse: '折叠',
+            dockBtnMaximize: '最大化',
+            dockBtnRestore: '还原',
+            dockLblFont: '字体',
+            dockLblSize: '字号',
+            dockLblColor: '文字颜色',
+            dockLblBg: '背景色',
+            dockBtnApplyFormat: '应用',
+            dockBtnResetFormat: '重置',
+            dockHintNoSelection: '请先选中节点再设置格式。',
+            dockHintIconNoSelection: '请先选中节点再设置图标。',
+            dockFontDefault: '默认',
+            dockIconNone: '无图标',
+            dockIconStar: '星标',
+            dockIconFlag: '旗帜',
+            dockIconBulb: '灯泡',
+            dockIconBook: '书本',
+            dockIconCheck: '勾选',
+            dockIconWarn: '警告',
+            dockIconHeart: '心形',
+            dockIconRocket: '火箭',
+            dockIconPin: '图钉',
+            htoolbarLabel: '工具栏',
+            appTitlePrimary: '脑图',
+            appTitleSecondary: 'Mindmap 编辑器',
+            appTitleBannerAria: '脑图编辑器',
+            defaultChildTopic: '子主题',
             sumFile: '文件',
             sumEdit: '编辑',
             sumView: '视图',
@@ -2557,7 +3419,24 @@ export class MindmapPanel {
             menuToggle: '切换展开/折叠',
             menuExpandAll: '全部展开',
             menuModifyPlaceholder: '（无）',
-            menuInsertDisabled: '添加 / 删除 / 移动',
+            menuInsertImage: '插入图片',
+            menuInsertText: '插入文字',
+            menuInsertWhiteboard: '插入白板',
+            menuInsertVideo: '插入视频',
+            menuInsertAudio: '插入音频',
+            menuInsertGltf: '插入 glTF 模型',
+            menuInsertTable: '插入表格',
+            embedPromptUrl: '资源地址（https:// 或本地路径）：',
+            embedPromptText: '文字内容：',
+            embedPromptTable: '表格行列，如 3x4：',
+            embedNoUrl: '（空）',
+            embedTopicPrefix_image: '[图片]',
+            embedTopicPrefix_text: '[文字]',
+            embedTopicPrefix_whiteboard: '[白板]',
+            embedTopicPrefix_video: '[视频]',
+            embedTopicPrefix_audio: '[音频]',
+            embedTopicPrefix_gltf: '[glTF 模型]',
+            embedTopicPrefix_table: '[表格]',
             menuToolsNone: '（无）',
             menuToggleDock: '脑图：最大化/还原停靠区',
             menuToggleDebugBounds: '切换调试边界框',
@@ -2594,6 +3473,99 @@ export class MindmapPanel {
           return dict[key] || key;
         }
 
+        /** [英文占位, 图标, 快捷键提示] — 工具栏仅显示图标，文案在 title / aria-label */
+        const toolbarLabelMap = {
+          btnNew: ['New', '＋', 'Ctrl/Cmd+N'],
+          btnOpen: ['Open', '📂', 'Ctrl/Cmd+O'],
+          btnSave: ['Save', '💾', 'Ctrl/Cmd+S'],
+          btnSaveAs: ['Save As', '🖫', 'Ctrl/Cmd+Shift+S']
+        };
+
+        function applyHtoolbarLabels() {
+          const items = [
+            ['btnNew', 'menuNew'],
+            ['btnOpen', 'menuOpen'],
+            ['btnSave', 'menuSave'],
+            ['btnSaveAs', 'menuSaveAs']
+          ];
+          for (let i = 0; i < items.length; i++) {
+            const id = items[i][0];
+            const menuKey = items[i][1];
+            const btn = document.getElementById(id);
+            if (!btn) continue;
+            const meta = toolbarLabelMap[id];
+            if (!meta) continue;
+            const icon = meta[1];
+            const shortcut = meta[2];
+            btn.textContent = icon;
+            const tip = shortcut ? t(menuKey) + ' (' + shortcut + ')' : t(menuKey);
+            btn.title = tip;
+            btn.setAttribute('aria-label', tip);
+          }
+        }
+
+        let formatDockCollapsed = false;
+        let iconDockCollapsed = false;
+        let formatDockMaximized = false;
+        let iconDockMaximized = false;
+
+        function applyDockMaximizeUi() {
+          const df = document.getElementById('dockFormat');
+          const di = document.getElementById('dockIcon');
+          if (!df || !di) return;
+          const fc = formatDockCollapsed;
+          const ic = iconDockCollapsed;
+          df.classList.toggle('dock-maximized', formatDockMaximized && !fc);
+          di.classList.toggle('dock-maximized', iconDockMaximized && !ic);
+          df.classList.toggle('dock-peer-squash', iconDockMaximized && !ic && !fc);
+          di.classList.toggle('dock-peer-squash', formatDockMaximized && !fc && !ic);
+        }
+
+        function updateDockMaximizeButtons() {
+          const mf = document.getElementById('btnDockFormatMaximize');
+          const mi = document.getElementById('btnDockIconMaximize');
+          const bfc = document.getElementById('btnDockFormatCollapse');
+          const bic = document.getElementById('btnDockIconCollapse');
+          if (bfc) {
+            bfc.title = t('dockBtnCollapse');
+            bfc.setAttribute('aria-label', t('dockBtnCollapse'));
+          }
+          if (bic) {
+            bic.title = t('dockBtnCollapse');
+            bic.setAttribute('aria-label', t('dockBtnCollapse'));
+          }
+          if (mf) {
+            const r = formatDockMaximized;
+            mf.title = r ? t('dockBtnRestore') : t('dockBtnMaximize');
+            mf.setAttribute('aria-label', mf.title);
+            mf.textContent = r ? '❐' : '□';
+          }
+          if (mi) {
+            const r = iconDockMaximized;
+            mi.title = r ? t('dockBtnRestore') : t('dockBtnMaximize');
+            mi.setAttribute('aria-label', mi.title);
+            mi.textContent = r ? '❐' : '□';
+          }
+        }
+
+        function applyFormatDockCollapsed(collapsed) {
+          formatDockCollapsed = collapsed;
+          const el = document.getElementById('dockFormat');
+          if (el) el.classList.toggle('collapsed', collapsed);
+          if (collapsed) formatDockMaximized = false;
+          applyDockMaximizeUi();
+          updateDockMaximizeButtons();
+        }
+
+        function applyIconDockCollapsed(collapsed) {
+          iconDockCollapsed = collapsed;
+          const el = document.getElementById('dockIcon');
+          if (el) el.classList.toggle('collapsed', collapsed);
+          if (collapsed) iconDockMaximized = false;
+          applyDockMaximizeUi();
+          updateDockMaximizeButtons();
+        }
+
         function applyLanguage(lang) {
           currentLang = lang === 'zh' ? 'zh' : 'en';
           const byId = (id, text) => {
@@ -2627,9 +3599,57 @@ export class MindmapPanel {
           byId('menuModifyPlaceholder', t('menuModifyPlaceholder'));
           byId('menuToggleDock', t('menuToggleDock'));
           byId('menuToggleDebugBounds', t('menuToggleDebugBounds'));
-          byId('menuInsertDisabled', t('menuInsertDisabled'));
+          byId('menuInsertImage', t('menuInsertImage'));
+          byId('menuInsertText', t('menuInsertText'));
+          byId('menuInsertWhiteboard', t('menuInsertWhiteboard'));
+          byId('menuInsertVideo', t('menuInsertVideo'));
+          byId('menuInsertAudio', t('menuInsertAudio'));
+          byId('menuInsertGltf', t('menuInsertGltf'));
+          byId('menuInsertTable', t('menuInsertTable'));
           byId('menuToolsNone', t('menuToolsNone'));
-          byId('menuHelpStatusTip', t('menuHelpStatusTip'));
+          byId('menuOpenLog', t('menuOpenLog'));
+          byId('logDialogTitle', t('logDialogTitle'));
+          const logCopyBtn = document.getElementById('logCopyBtn');
+          const logCloseBtn = document.getElementById('logCloseBtn');
+          if (logCopyBtn) logCopyBtn.textContent = t('logCopyAll');
+          if (logCloseBtn) logCloseBtn.textContent = t('logClose');
+          const sbTitleEl = document.getElementById('statusbar');
+          if (sbTitleEl) sbTitleEl.title = t('statusbarLogHint');
+          if (canvasZoomValueEl) canvasZoomValueEl.title = t('zoomDblClickReset');
+          const zFit = document.getElementById('canvasZoomFit');
+          const zRoot = document.getElementById('canvasZoomCenterRoot');
+          const zReset = document.getElementById('canvasZoomReset');
+          if (zFit) {
+            zFit.textContent = t('zoomBadgeFit');
+            zFit.title = t('ctxFitAll');
+            zFit.setAttribute('aria-label', t('ctxFitAll'));
+          }
+          if (zRoot) {
+            zRoot.textContent = t('zoomBadgeCenterRoot');
+            zRoot.title = t('ctxCenterRoot');
+            zRoot.setAttribute('aria-label', t('ctxCenterRoot'));
+          }
+          if (zReset) {
+            zReset.textContent = t('zoomBadgeReset');
+            zReset.title = t('ctxResetZoom');
+            zReset.setAttribute('aria-label', t('ctxResetZoom'));
+          }
+          const zOut = document.getElementById('canvasZoomOut');
+          const zIn = document.getElementById('canvasZoomIn');
+          if (zOut) {
+            zOut.title = t('zoomOut');
+            zOut.setAttribute('aria-label', t('zoomOut'));
+          }
+          if (zIn) {
+            zIn.title = t('zoomIn');
+            zIn.setAttribute('aria-label', t('zoomIn'));
+          }
+          if (canvasZoomStackEl) {
+            canvasZoomStackEl.setAttribute('aria-label', t('zoomStackAria'));
+          }
+          if (canvasZoomBadgeEl) {
+            canvasZoomBadgeEl.setAttribute('aria-label', t('zoomControlsAria'));
+          }
           byId('objCtxTitle', t('objCtxTitle'));
           byId('canvasCtxTitle', t('canvasCtxTitle'));
           byId('ctxAddChild', t('ctxAddChild'));
@@ -2646,6 +3666,39 @@ export class MindmapPanel {
           byId('ctxResetZoom', t('ctxResetZoom'));
           byId('errorDialogTitle', t('dialogTitle'));
           byId('errorDialogConfirm', t('dialogConfirm'));
+          const htb = document.getElementById('htoolbar');
+          if (htb) htb.setAttribute('aria-label', t('htoolbarLabel'));
+          byId('appTitleName', t('appTitlePrimary'));
+          byId('appTitleSub', t('appTitleSecondary'));
+          const appTitleBarEl = document.getElementById('appTitleBar');
+          if (appTitleBarEl) appTitleBarEl.setAttribute('aria-label', t('appTitleBannerAria'));
+          const appTitleIconImgEl = document.getElementById('appTitleIconImg');
+          const appTitleIconWrapEl = document.getElementById('appTitleIconWrap');
+          if (appTitleIconImgEl && appTitleIconWrapEl && !appTitleIconImgEl.dataset.fallbackBound) {
+            appTitleIconImgEl.dataset.fallbackBound = '1';
+            appTitleIconImgEl.addEventListener('error', function () {
+              appTitleIconWrapEl.classList.add('fallback-png-missing');
+            });
+          }
+          const bdf = document.getElementById('btnToggleDockFormat');
+          const bdi = document.getElementById('btnToggleDockIcon');
+          if (bdf) bdf.title = t('dockFormatEdge');
+          if (bdi) bdi.title = t('dockIconEdge');
+          byId('dockFormatTitle', t('dockPanelFormat'));
+          byId('dockIconTitle', t('dockPanelIcon'));
+          byId('dockLblFont', t('dockLblFont'));
+          byId('dockLblSize', t('dockLblSize'));
+          byId('dockLblColor', t('dockLblColor'));
+          byId('dockLblBg', t('dockLblBg'));
+          const dockApply = document.getElementById('dockBtnApplyFormat');
+          const dockReset = document.getElementById('dockBtnResetFormat');
+          if (dockApply) dockApply.textContent = t('dockBtnApplyFormat');
+          if (dockReset) dockReset.textContent = t('dockBtnResetFormat');
+          populateDockFontSelect();
+          buildDockIconGrid();
+          refreshDockFromSelection();
+          applyHtoolbarLabels();
+          updateDockMaximizeButtons();
           refreshDebugBounds();
           applySaveTrafficLight(saveTrafficLightState);
         }
@@ -2653,10 +3706,17 @@ export class MindmapPanel {
         function setStatus(text, isError) {
           if (statusbarTextEl) statusbarTextEl.textContent = text;
           if (statusbarEl) statusbarEl.classList.toggle('error', !!isError);
+          appendLog(isError ? 'error' : 'info', text);
         }
 
         function showErrorDialog(message) {
           pendingMcpNoticeRequestId = null;
+          try {
+            appendLog(
+              'error',
+              (currentLang === 'zh' ? '操作提示: ' : 'Notice: ') + String(message == null ? '' : message)
+            );
+          } catch (_) {}
           const titleEl = document.getElementById('errorDialogTitle');
           if (titleEl) titleEl.textContent = t('dialogTitle');
           if (errorDialogMsgEl) errorDialogMsgEl.textContent = message;
@@ -2721,6 +3781,7 @@ export class MindmapPanel {
 
         function showMcpPersistNoticeDialog(titleText, message, requestId) {
           pendingMcpNoticeRequestId = requestId || null;
+          appendLog('warn', (titleText || 'MCP') + ': ' + String(message || ''));
           const titleEl = document.getElementById('errorDialogTitle');
           if (titleEl) titleEl.textContent = titleText || 'MCP';
           if (errorDialogConfirmBtn) errorDialogConfirmBtn.textContent = t('dialogConfirm');
@@ -2729,74 +3790,62 @@ export class MindmapPanel {
           if (errorDialogConfirmBtn) errorDialogConfirmBtn.focus();
         }
 
-        // Toolbar / attribute panel collapse state.
-        const vtoolbarEl = document.getElementById('vtoolbar');
-        const btnToggleToolbar = document.getElementById('btnToggleToolbar');
-        const attrPanelEl = document.getElementById('attrPanel');
-        const btnToggleAttrPanel = document.getElementById('btnToggleAttrPanel');
+        // 主菜单下工具栏 + 右侧多个独立 Dock（格式 / 图标）
+        const btnToggleDockFormat = document.getElementById('btnToggleDockFormat');
+        const btnToggleDockIcon = document.getElementById('btnToggleDockIcon');
+        const btnDockFormatCollapse = document.getElementById('btnDockFormatCollapse');
+        const btnDockFormatMaximize = document.getElementById('btnDockFormatMaximize');
+        const btnDockIconCollapse = document.getElementById('btnDockIconCollapse');
+        const btnDockIconMaximize = document.getElementById('btnDockIconMaximize');
 
-        let toolbarCollapsed = false;
-        let attrCollapsed = false;
-
-        const toolbarLabelMap = {
-          btnNew: ['New', '＋', 'Ctrl/Cmd+N'],
-          btnOpen: ['Open', '📂', 'Ctrl/Cmd+O'],
-          btnSave: ['Save', '💾', 'Ctrl/Cmd+S'],
-          btnSaveAs: ['Save As', '🖫', 'Ctrl/Cmd+Shift+S']
-        };
-
-        function applyToolbarMode(collapsed) {
-          toolbarCollapsed = collapsed;
-          if (!vtoolbarEl) return;
-          vtoolbarEl.classList.toggle('collapsed', collapsed);
-
-          if (btnToggleToolbar) btnToggleToolbar.textContent = collapsed ? '>>' : '<<';
-
-          for (const id of Object.keys(toolbarLabelMap)) {
-            const btn = document.getElementById(id);
-            if (!btn) continue;
-            const full = toolbarLabelMap[id][0];
-            const icon = toolbarLabelMap[id][1];
-            const shortcut = toolbarLabelMap[id][2];
-            btn.title = shortcut ? (full + ' (' + shortcut + ')') : full;
-            btn.textContent = collapsed ? icon : (icon + ' ' + full);
-          }
+        if (btnToggleDockFormat) {
+          btnToggleDockFormat.addEventListener('click', function () {
+            applyFormatDockCollapsed(!formatDockCollapsed);
+          });
         }
-
-        function applyAttrMode(collapsed) {
-          attrCollapsed = collapsed;
-          if (!attrPanelEl) return;
-          attrPanelEl.classList.toggle('collapsed', collapsed);
-
-          if (btnToggleAttrPanel) btnToggleAttrPanel.textContent = collapsed ? '<<' : '>>';
-
-          const tabFormat = document.getElementById('tabFormat');
-          const tabIcon = document.getElementById('tabIcon');
-          if (tabFormat) {
-            tabFormat.title = 'Format';
-            tabFormat.textContent = '⚙';
-          }
-          if (tabIcon) {
-            tabIcon.title = 'Icon';
-            tabIcon.textContent = '🖼';
-          }
+        if (btnToggleDockIcon) {
+          btnToggleDockIcon.addEventListener('click', function () {
+            applyIconDockCollapsed(!iconDockCollapsed);
+          });
         }
-
-        if (btnToggleToolbar) {
-          btnToggleToolbar.addEventListener('click', function () {
-            applyToolbarMode(!toolbarCollapsed);
+        if (btnDockFormatCollapse) {
+          btnDockFormatCollapse.addEventListener('click', function () {
+            applyFormatDockCollapsed(true);
+          });
+        }
+        if (btnDockIconCollapse) {
+          btnDockIconCollapse.addEventListener('click', function () {
+            applyIconDockCollapsed(true);
+          });
+        }
+        if (btnDockFormatMaximize) {
+          btnDockFormatMaximize.addEventListener('click', function () {
+            if (formatDockMaximized) {
+              formatDockMaximized = false;
+            } else {
+              formatDockMaximized = true;
+              iconDockMaximized = false;
+            }
+            applyDockMaximizeUi();
+            updateDockMaximizeButtons();
+          });
+        }
+        if (btnDockIconMaximize) {
+          btnDockIconMaximize.addEventListener('click', function () {
+            if (iconDockMaximized) {
+              iconDockMaximized = false;
+            } else {
+              iconDockMaximized = true;
+              formatDockMaximized = false;
+            }
+            applyDockMaximizeUi();
+            updateDockMaximizeButtons();
           });
         }
 
-        if (btnToggleAttrPanel) {
-          btnToggleAttrPanel.addEventListener('click', function () {
-            applyAttrMode(!attrCollapsed);
-          });
-        }
-
-        // Initial state: collapsed (as documented in README).
-        applyToolbarMode(true);
-        applyAttrMode(true);
+        applyHtoolbarLabels();
+        applyFormatDockCollapsed(true);
+        applyIconDockCollapsed(true);
         if (errorDialogConfirmBtn) {
           errorDialogConfirmBtn.addEventListener('click', function () {
             if (pendingMcpNoticeRequestId) {
@@ -2811,11 +3860,17 @@ export class MindmapPanel {
         function makeMindData(tree) {
           // jsMind expects a root node with children.
           function toJmNode(node) {
-            return {
+            const o = {
               id: node.id,
               topic: node.topic,
               children: (node.children || []).map(toJmNode)
             };
+            if (node.data && typeof node.data === 'object' && Object.keys(node.data).length > 0) {
+              try {
+                o.data = JSON.parse(JSON.stringify(node.data));
+              } catch (_) {}
+            }
+            return o;
           }
           return {
             meta: { name: 'mindmap', author: 'mcp', version: '1.0' },
@@ -2916,6 +3971,12 @@ export class MindmapPanel {
         }
 
         function init(tree, ext) {
+          lastKnownMindmapTree = tree && tree.root ? tree : null;
+          try {
+            if (window.__MINDMAP_BROWSER_FILE_OPS__) {
+              window.__mindmapBrowserDocExt = ext === 'jm' ? 'jm' : 'mmd';
+            }
+          } catch (_) {}
           try {
             suppressDirty = true;
             if (typeof jsMind === 'undefined') {
@@ -2964,24 +4025,66 @@ export class MindmapPanel {
               canvasWrapEl.focus();
             }
 
-            jm.add_event_listener('select_node', function (e) {
-              selectedNode = e && e.node ? e.node : null;
-              if (canvasWrapEl) {
-                canvasWrapEl.focus();
-              }
-            setSingleSelectStatus(selectedNode);
+            // jsMind：add_event_listener 只接收 (type, data) 单一回调；event_type 见 jsMind.event_type
+            jm.add_event_listener(function (type, data) {
+              try {
+                const ET =
+                  typeof jsMind !== 'undefined' && jsMind.event_type
+                    ? jsMind.event_type
+                    : { show: 1, resize: 2, edit: 3, select: 4 };
+                if (type === ET.select && data && data.evt === 'select_node') {
+                  const nid = data.node;
+                  selectedNode = nid && jm.get_node ? jm.get_node(nid) : null;
+                  if (canvasWrapEl) {
+                    canvasWrapEl.focus();
+                  }
+                  setSingleSelectStatus(selectedNode);
+                  refreshDockFromSelection();
+                  return;
+                }
+                if (type === ET.show) {
+                  requestAnimationFrame(function () {
+                    applyAllMindNodeVisuals();
+                    refreshDockFromSelection();
+                  });
+                  return;
+                }
+                if (type === ET.edit && data) {
+                  const evt = data.evt;
+                  if (evt === 'update_node' && data.node && jm.get_node) {
+                    const n = jm.get_node(data.node);
+                    if (n) {
+                      requestAnimationFrame(function () {
+                        applyMindNodeVisual(n);
+                      });
+                    }
+                  } else if (
+                    evt === 'add_node' ||
+                    evt === 'add_nodes' ||
+                    evt === 'remove_node' ||
+                    evt === 'insert_node_before' ||
+                    evt === 'insert_node_after'
+                  ) {
+                    requestAnimationFrame(function () {
+                      applyAllMindNodeVisuals();
+                    });
+                  }
+                  if (evt === 'move_node') {
+                    markContentDirty();
+                    selectedNode = null;
+                    setStatus(t('ready'));
+                    requestAnimationFrame(function () {
+                      applyAllMindNodeVisuals();
+                    });
+                  }
+                }
+              } catch (_) {}
             });
 
-            jm.add_event_listener('move_node', function () {
-              markContentDirty();
-              selectedNode = null;
-              setStatus(t('ready'));
-            });
-
-            jm.add_event_listener('edit_node', function () {
-              markContentDirty();
-              selectedNode = null;
-              setStatus(t('ready'));
+            initDockFormatAndIcon();
+            requestAnimationFrame(function () {
+              applyAllMindNodeVisuals();
+              refreshDockFromSelection();
             });
 
             suppressDirty = false;
@@ -2995,45 +4098,22 @@ export class MindmapPanel {
           }
         }
 
-        // Right panel tabs: simple local UI toggling.
-        const tabFormatBtn = document.getElementById('tabFormat');
-        const tabIconBtn = document.getElementById('tabIcon');
-        function setActiveTab(tabName) {
-          const formatSection = document.getElementById('tabContent-format');
-          const iconSection = document.getElementById('tabContent-icon');
-          if (tabName === 'format') {
-            if (tabFormatBtn) tabFormatBtn.classList.add('active');
-            if (tabIconBtn) tabIconBtn.classList.remove('active');
-            if (formatSection) formatSection.classList.add('active');
-            if (iconSection) iconSection.classList.remove('active');
-          } else {
-            if (tabIconBtn) tabIconBtn.classList.add('active');
-            if (tabFormatBtn) tabFormatBtn.classList.remove('active');
-            if (iconSection) iconSection.classList.add('active');
-            if (formatSection) formatSection.classList.remove('active');
-          }
-        }
-        if (tabFormatBtn) {
-          tabFormatBtn.addEventListener('click', function () {
-            setActiveTab('format');
-          });
-        }
-        if (tabIconBtn) {
-          tabIconBtn.addEventListener('click', function () {
-            setActiveTab('icon');
-          });
-        }
-
         function getTreeFromMind() {
           function normalize(node) {
             if (!node) {
               return { id: 'root', topic: 'Root', children: [] };
             }
-            return {
+            const o = {
               id: node.id || ('n_' + Math.random().toString(16).slice(2)),
               topic: String(node.topic != null ? node.topic : ''),
               children: (node.children || []).map(normalize)
             };
+            if (node.data && typeof node.data === 'object') {
+              try {
+                o.data = JSON.parse(JSON.stringify(node.data));
+              } catch (_) {}
+            }
+            return o;
           }
 
           // Compatibility-first:
@@ -3058,6 +4138,21 @@ export class MindmapPanel {
           throw new Error('Unable to export mindmap tree from current jsMind instance.');
         }
 
+        /** 保存、另存为、快捷键存盘：优先从 jsMind 导出，否则使用最近一次注入的树。 */
+        function getTreeForFileOps() {
+          if (jm) {
+            return getTreeFromMind();
+          }
+          if (lastKnownMindmapTree && lastKnownMindmapTree.root) {
+            return lastKnownMindmapTree;
+          }
+          throw new Error(
+            currentLang === 'zh'
+              ? '画布未就绪，无法导出脑图数据。'
+              : 'Canvas not ready; cannot export mindmap data.'
+          );
+        }
+
         function getActiveSelectedNode() {
           if (selectedNode) return selectedNode;
           if (jm && jm.get_selected_node) {
@@ -3068,6 +4163,337 @@ export class MindmapPanel {
             }
           }
           return null;
+        }
+
+        const MM_EMBED_CLASS_PREFIX = 'mm-embed-';
+        const MM_EMBED_KINDS = ['image', 'text', 'whiteboard', 'video', 'audio', 'gltf', 'table'];
+
+        function stripMmEmbedClasses(el) {
+          if (!el || !el.classList) return;
+          const toRemove = [];
+          for (let i = 0; i < el.classList.length; i++) {
+            const c = el.classList[i];
+            if (c && c.indexOf(MM_EMBED_CLASS_PREFIX) === 0) {
+              toRemove.push(c);
+            }
+          }
+          for (let j = 0; j < toRemove.length; j++) {
+            el.classList.remove(toRemove[j]);
+          }
+        }
+
+        const MM_ICON_CLASS_PREFIX = 'mm-icon-';
+        const MM_ICON_IDS = [
+          'none',
+          'star',
+          'flag',
+          'bulb',
+          'book',
+          'check',
+          'warn',
+          'heart',
+          'rocket',
+          'pin'
+        ];
+
+        function stripMmIconClasses(el) {
+          if (!el || !el.classList) return;
+          const toRemove = [];
+          for (let i = 0; i < el.classList.length; i++) {
+            const c = el.classList[i];
+            if (c && c.indexOf(MM_ICON_CLASS_PREFIX) === 0) {
+              toRemove.push(c);
+            }
+          }
+          for (let j = 0; j < toRemove.length; j++) {
+            el.classList.remove(toRemove[j]);
+          }
+        }
+
+        function applyMindNodeVisual(node) {
+          if (!node || !node._data || !node._data.view || !node._data.view.element) {
+            return;
+          }
+          const el = node._data.view.element;
+          const d = node.data && typeof node.data === 'object' ? node.data : {};
+          stripMmEmbedClasses(el);
+          stripMmIconClasses(el);
+          const emb = d.mmEmbed;
+          if (emb && emb.type) {
+            const tk = String(emb.type).replace(/[^a-z0-9_-]/gi, '');
+            if (tk && MM_EMBED_KINDS.indexOf(tk) >= 0) {
+              el.classList.add(MM_EMBED_CLASS_PREFIX + tk);
+            }
+          }
+          const iconRaw = d.mmIcon;
+          if (!(emb && emb.type)) {
+            if (iconRaw === 'none') {
+              el.classList.add(MM_ICON_CLASS_PREFIX + 'none');
+            } else if (iconRaw && MM_ICON_IDS.indexOf(String(iconRaw)) >= 1) {
+              el.classList.add(MM_ICON_CLASS_PREFIX + String(iconRaw));
+            }
+          }
+          if (d.mmFont) {
+            el.style.fontFamily = String(d.mmFont);
+          } else {
+            el.style.removeProperty('font-family');
+          }
+          if (d.mmFontSize != null && d.mmFontSize !== '') {
+            const sz = parseInt(String(d.mmFontSize), 10);
+            if (!isNaN(sz) && sz > 0) {
+              el.style.fontSize = sz + 'px';
+            } else {
+              el.style.removeProperty('font-size');
+            }
+          } else {
+            el.style.removeProperty('font-size');
+          }
+          if (d.mmColor) {
+            el.style.color = String(d.mmColor);
+          } else {
+            el.style.removeProperty('color');
+          }
+          if (d.mmBg) {
+            el.style.backgroundColor = String(d.mmBg);
+          } else {
+            el.style.removeProperty('background-color');
+          }
+        }
+
+        function applyAllMindNodeVisuals() {
+          if (!jm || !jm.mind || !jm.mind.nodes) return;
+          const map = jm.mind.nodes;
+          for (const k in map) {
+            if (!Object.prototype.hasOwnProperty.call(map, k)) continue;
+            applyMindNodeVisual(map[k]);
+          }
+        }
+
+        function populateDockFontSelect() {
+          const sel = document.getElementById('dockInputFont');
+          if (!sel) return;
+          const cur = sel.value;
+          const fonts = [
+            { value: '', label: t('dockFontDefault') },
+            { value: 'system-ui, -apple-system, Segoe UI, sans-serif', label: 'System UI' },
+            { value: 'Arial, Helvetica, sans-serif', label: 'Arial' },
+            { value: 'Verdana, Geneva, sans-serif', label: 'Verdana' },
+            { value: 'Georgia, serif', label: 'Georgia' },
+            { value: '"Times New Roman", Times, serif', label: 'Times New Roman' },
+            { value: '"Courier New", Courier, monospace', label: 'Courier New' },
+            { value: '"Microsoft YaHei", "微软雅黑", sans-serif', label: 'Microsoft YaHei' },
+            { value: 'SimSun, "宋体", serif', label: 'SimSun' },
+            { value: '"Segoe UI", Roboto, sans-serif', label: 'Segoe UI / Roboto' }
+          ];
+          sel.innerHTML = '';
+          for (let i = 0; i < fonts.length; i++) {
+            const opt = document.createElement('option');
+            opt.value = fonts[i].value;
+            opt.textContent = fonts[i].label;
+            sel.appendChild(opt);
+          }
+          if (cur) sel.value = cur;
+        }
+
+        function buildDockIconGrid() {
+          const grid = document.getElementById('dockIconGrid');
+          if (!grid) return;
+          grid.innerHTML = '';
+          const defs = [
+            { id: 'none', emoji: '∅', labelKey: 'dockIconNone' },
+            { id: 'star', emoji: '⭐', labelKey: 'dockIconStar' },
+            { id: 'flag', emoji: '🚩', labelKey: 'dockIconFlag' },
+            { id: 'bulb', emoji: '💡', labelKey: 'dockIconBulb' },
+            { id: 'book', emoji: '📖', labelKey: 'dockIconBook' },
+            { id: 'check', emoji: '✅', labelKey: 'dockIconCheck' },
+            { id: 'warn', emoji: '⚠️', labelKey: 'dockIconWarn' },
+            { id: 'heart', emoji: '❤️', labelKey: 'dockIconHeart' },
+            { id: 'rocket', emoji: '🚀', labelKey: 'dockIconRocket' },
+            { id: 'pin', emoji: '📌', labelKey: 'dockIconPin' }
+          ];
+          for (let di = 0; di < defs.length; di++) {
+            const def = defs[di];
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'dock-icon-btn';
+            btn.setAttribute('data-mm-icon', def.id);
+            btn.innerHTML =
+              '<span>' +
+              escapeHtml(def.emoji) +
+              '</span><span class="dock-icon-label">' +
+              escapeHtml(t(def.labelKey)) +
+              '</span>';
+            (function (iconId) {
+              btn.addEventListener('click', function () {
+                applyIconToSelection(iconId);
+              });
+            })(def.id);
+            grid.appendChild(btn);
+          }
+        }
+
+        function refreshDockFromSelection() {
+          const node = getActiveSelectedNode();
+          const form = document.getElementById('dockFormatForm');
+          const hint = document.getElementById('dockFormatHint');
+          const ih = document.getElementById('dockIconHint');
+          if (form) {
+            form.classList.toggle('dock-disabled', !node);
+          }
+          if (hint) {
+            hint.textContent = node ? String(node.topic || node.id || '') : t('dockHintNoSelection');
+          }
+          if (ih) {
+            ih.textContent = node ? String(node.topic || node.id || '') : t('dockHintIconNoSelection');
+          }
+          const d = node && node.data && typeof node.data === 'object' ? node.data : {};
+          const fontEl = document.getElementById('dockInputFont');
+          if (fontEl) {
+            const fv = d.mmFont != null ? String(d.mmFont) : '';
+            fontEl.value = fv;
+            if (fv && fontEl.value !== fv) {
+              const opt = document.createElement('option');
+              opt.value = fv;
+              opt.textContent = fv.length > 40 ? fv.slice(0, 38) + '…' : fv;
+              fontEl.appendChild(opt);
+              fontEl.value = fv;
+            }
+          }
+          const sizeEl = document.getElementById('dockInputFontSize');
+          if (sizeEl) {
+            sizeEl.value =
+              d.mmFontSize != null && d.mmFontSize !== '' ? String(d.mmFontSize) : '';
+          }
+          const cEl = document.getElementById('dockInputColor');
+          if (cEl) {
+            cEl.value = d.mmColor ? String(d.mmColor) : '#333333';
+          }
+          const bgEl = document.getElementById('dockInputBg');
+          if (bgEl) {
+            bgEl.value = d.mmBg ? String(d.mmBg) : '#ffffff';
+          }
+          const grid = document.getElementById('dockIconGrid');
+          if (grid) {
+            const raw = d.mmIcon;
+            const sel =
+              raw === undefined || raw === null ? '' : String(raw);
+            const btns = grid.querySelectorAll('.dock-icon-btn');
+            for (let i = 0; i < btns.length; i++) {
+              const b = btns[i];
+              const id = b.getAttribute('data-mm-icon') || '';
+              b.classList.toggle('mm-selected', id === sel);
+            }
+          }
+        }
+
+        function commitFormatDock() {
+          const node = getActiveSelectedNode();
+          if (!node || !jm) return;
+          if (!node.data || typeof node.data !== 'object') {
+            node.data = {};
+          }
+          const fontEl = document.getElementById('dockInputFont');
+          const sizeEl = document.getElementById('dockInputFontSize');
+          const cEl = document.getElementById('dockInputColor');
+          const bgEl = document.getElementById('dockInputBg');
+          const fv = fontEl && fontEl.value ? String(fontEl.value) : '';
+          if (fv) node.data.mmFont = fv;
+          else delete node.data.mmFont;
+          const sv = sizeEl && String(sizeEl.value).trim();
+          if (sv) {
+            const n = parseInt(sv, 10);
+            if (!isNaN(n) && n > 0) node.data.mmFontSize = n;
+            else delete node.data.mmFontSize;
+          } else {
+            delete node.data.mmFontSize;
+          }
+          if (cEl && cEl.value) {
+            node.data.mmColor = String(cEl.value);
+          } else {
+            delete node.data.mmColor;
+          }
+          if (bgEl && bgEl.value) {
+            node.data.mmBg = String(bgEl.value);
+          } else {
+            delete node.data.mmBg;
+          }
+          try {
+            if (jm.view && typeof jm.view.update_node === 'function') {
+              jm.view.update_node(node);
+            }
+          } catch (_) {}
+          requestAnimationFrame(function () {
+            applyMindNodeVisual(node);
+          });
+          markContentDirty();
+          refreshDockFromSelection();
+        }
+
+        function resetFormatDock() {
+          const node = getActiveSelectedNode();
+          if (!node || !node.data) return;
+          delete node.data.mmFont;
+          delete node.data.mmFontSize;
+          delete node.data.mmColor;
+          delete node.data.mmBg;
+          const keys = Object.keys(node.data);
+          if (keys.length === 0) {
+            node.data = {};
+          }
+          try {
+            if (jm.view && typeof jm.view.update_node === 'function') {
+              jm.view.update_node(node);
+            }
+          } catch (_) {}
+          requestAnimationFrame(function () {
+            applyMindNodeVisual(node);
+          });
+          markContentDirty();
+          refreshDockFromSelection();
+        }
+
+        function applyIconToSelection(iconId) {
+          const node = getActiveSelectedNode();
+          if (!node || !jm) return;
+          if (!node.data || typeof node.data !== 'object') {
+            node.data = {};
+          }
+          if (iconId === 'none') {
+            node.data.mmIcon = 'none';
+          } else if (MM_ICON_IDS.indexOf(iconId) >= 1) {
+            node.data.mmIcon = iconId;
+          } else {
+            delete node.data.mmIcon;
+          }
+          try {
+            if (jm.view && typeof jm.view.update_node === 'function') {
+              jm.view.update_node(node);
+            }
+          } catch (_) {}
+          requestAnimationFrame(function () {
+            applyMindNodeVisual(node);
+          });
+          markContentDirty();
+          refreshDockFromSelection();
+        }
+
+        function initDockFormatAndIcon() {
+          if (dockFormatIconInited) return;
+          dockFormatIconInited = true;
+          populateDockFontSelect();
+          buildDockIconGrid();
+          const applyBtn = document.getElementById('dockBtnApplyFormat');
+          const resetBtn = document.getElementById('dockBtnResetFormat');
+          if (applyBtn) {
+            applyBtn.addEventListener('click', function () {
+              commitFormatDock();
+            });
+          }
+          if (resetBtn) {
+            resetBtn.addEventListener('click', function () {
+              resetFormatDock();
+            });
+          }
         }
 
         const MIND_CLIP_MARKER = '##MINDMAP_SUBTREE##';
@@ -3234,7 +4660,8 @@ export class MindmapPanel {
         }
 
         function notifyInvalidAction(message) {
-          setStatus(message, true);
+          if (statusbarTextEl) statusbarTextEl.textContent = message;
+          if (statusbarEl) statusbarEl.classList.add('error');
           showErrorDialog(message);
         }
 
@@ -3470,7 +4897,7 @@ export class MindmapPanel {
           if (!jsmindContainerEl) return;
           jsmindContainerEl.style.transformOrigin = '0 0';
           jsmindContainerEl.style.transform = 'translate(' + panX + 'px, ' + panY + 'px) scale(' + zoomScale + ')';
-          if (statusbarZoomEl) statusbarZoomEl.textContent = Math.round(zoomScale * 100) + '%';
+          if (canvasZoomValueEl) canvasZoomValueEl.textContent = Math.round(zoomScale * 100) + '%';
 
           if (gridLayerEl) {
             // Infinite grid: keep a fixed full-screen layer and update tile size/offset from pan+zoom.
@@ -3481,6 +4908,21 @@ export class MindmapPanel {
             gridLayerEl.style.backgroundPosition = offX + 'px ' + offY + 'px';
           }
           refreshDebugBounds();
+        }
+
+        /** 以画布客户区中心为锚点步进缩放（步长与滚轮一致 ±0.1）。 */
+        function zoomByStep(delta) {
+          if (!canvasWrapEl) return;
+          const oldScale = zoomScale;
+          const newScale = Math.min(3, Math.max(0.3, zoomScale + delta));
+          if (newScale === oldScale) return;
+          const rect = canvasWrapEl.getBoundingClientRect();
+          const px = rect.width / 2;
+          const py = rect.height / 2;
+          panX = px - ((px - panX) / oldScale) * newScale;
+          panY = py - ((py - panY) / oldScale) * newScale;
+          zoomScale = newScale;
+          applyViewTransform();
         }
 
         function getMindPanelScroll() {
@@ -3596,6 +5038,8 @@ export class MindmapPanel {
           function (e) {
             if (e.button !== 0) return;
             const t = e.target;
+            /* 左下角缩放条：须在框选逻辑之前排除，否则捕获阶段 preventDefault 会吃掉按钮 click */
+            if (t && t.closest && t.closest('#canvasZoomStack')) return;
             const onNode =
               t &&
               t.closest &&
@@ -3829,6 +5273,17 @@ export class MindmapPanel {
           }
         }, { passive: false });
 
+        function selectNodeById(id) {
+          if (!jm || id == null) return;
+          try {
+            jm.select_node(id);
+            selectedNode = jm.get_selected_node ? jm.get_selected_node() : null;
+            if (selectedNode) {
+              setSingleSelectStatus(selectedNode);
+            }
+          } catch (_) {}
+        }
+
         function addChild() {
           if (!jm) return;
           const node = getActiveSelectedNode();
@@ -3840,6 +5295,7 @@ export class MindmapPanel {
           const newId = 'n_' + Math.random().toString(16).slice(2);
           jm.add_node(node, newId, topic, null);
           markContentDirty();
+          selectNodeById(newId);
         }
 
         function addSibling() {
@@ -3861,6 +5317,109 @@ export class MindmapPanel {
           const newId = 'n_' + Math.random().toString(16).slice(2);
           jm.add_node(parentNode, newId, 'New Node', null);
           markContentDirty();
+          selectNodeById(newId);
+        }
+
+        /** Alt+↑/↓：在同一父节点下调整兄弟顺序。 */
+        function moveSiblingUp() {
+          if (!jm) return;
+          const node = getActiveSelectedNode();
+          if (!node) return;
+          if (rootId && String(node.id) === String(rootId)) return;
+          const parent = node.parent;
+          if (!parent) return;
+          const prev = jm.find_node_before ? jm.find_node_before(node) : null;
+          if (!prev) return;
+          try {
+            jm.move_node(node, prev.id, parent.id);
+            markContentDirty();
+            selectNodeById(node.id);
+          } catch (_) {
+            notifyInvalidAction(t('alertPromoteDemoteFailed'));
+          }
+        }
+
+        function moveSiblingDown() {
+          if (!jm) return;
+          const node = getActiveSelectedNode();
+          if (!node) return;
+          if (rootId && String(node.id) === String(rootId)) return;
+          const parent = node.parent;
+          if (!parent) return;
+          const next = jm.find_node_after ? jm.find_node_after(node) : null;
+          if (!next) return;
+          const nextAfter = jm.find_node_after ? jm.find_node_after(next) : null;
+          const beforeSpec = nextAfter ? nextAfter.id : '_last_';
+          try {
+            jm.move_node(node, beforeSpec, parent.id);
+            markContentDirty();
+            selectNodeById(node.id);
+          } catch (_) {
+            notifyInvalidAction(t('alertPromoteDemoteFailed'));
+          }
+        }
+
+        /**
+         * 插入菜单：在选中节点（无选中则用根）下添加子节点，data.mmEmbed 记录类型与资源元数据。
+         * 画布上以 mm-embed-* 样式区分；完整渲染（图片/视频/HTML 表格等）可后续接扩展或 Webview 消息。
+         */
+        function insertEmbedChild(kind) {
+          if (!jm) return;
+          const parent = getActiveSelectedNode() || (jm.get_root ? jm.get_root() : null);
+          if (!parent) {
+            notifyInvalidAction(t('alertNoSelectAddChild'));
+            return;
+          }
+          const prefixKey = 'embedTopicPrefix_' + kind;
+          const prefix = t(prefixKey) || '[' + kind + ']';
+          const newId = 'n_' + Math.random().toString(16).slice(2);
+          const embed = { type: kind, v: 1 };
+          let topic = prefix;
+
+          if (kind === 'image' || kind === 'video' || kind === 'audio' || kind === 'gltf') {
+            const u = window.prompt(t('embedPromptUrl'), 'https://');
+            if (u === null) return;
+            embed.src = String(u).trim();
+            topic = prefix + ' ' + (embed.src || t('embedNoUrl'));
+          } else if (kind === 'text') {
+            const tx = window.prompt(t('embedPromptText'), '');
+            if (tx === null) return;
+            embed.text = String(tx);
+            const short =
+              embed.text.length > 36 ? embed.text.slice(0, 34) + '…' : embed.text;
+            topic = prefix + ' ' + (short || t('embedNoUrl'));
+          } else if (kind === 'whiteboard') {
+            embed.boardId = 'wb_' + Math.random().toString(16).slice(2);
+            topic = prefix;
+          } else if (kind === 'table') {
+            const spec = window.prompt(t('embedPromptTable'), '3x4');
+            if (spec === null) return;
+            let rows = 3;
+            let cols = 4;
+            const m = String(spec).trim().match(/^(\d+)\s*[xX×]\s*(\d+)$/);
+            if (m) {
+              rows = Math.min(99, Math.max(1, parseInt(m[1], 10)));
+              cols = Math.min(99, Math.max(1, parseInt(m[2], 10)));
+            }
+            embed.rows = rows;
+            embed.cols = cols;
+            topic = prefix + ' (' + rows + '×' + cols + ')';
+          } else {
+            return;
+          }
+
+          try {
+            jm.add_node(parent, newId, topic, { mmEmbed: embed });
+          } catch (_) {
+            notifyInvalidAction(t('alertPromoteDemoteFailed'));
+            return;
+          }
+          markContentDirty();
+          selectNodeById(newId);
+          requestAnimationFrame(function () {
+            const n = findNodeById(newId);
+            if (n) applyMindNodeVisual(n);
+          });
         }
 
         function deleteNode() {
@@ -4099,10 +5658,9 @@ export class MindmapPanel {
         }
 
         function doSave() {
-          if (!jm) return;
           try {
             setStatus(currentLang === 'zh' ? '正在保存...' : 'Saving...');
-            const tree = getTreeFromMind();
+            const tree = getTreeForFileOps();
             vscode.postMessage({ type: 'mindmap:requestSave', tree });
           } catch (e) {
             const msg = e && e.message ? e.message : String(e);
@@ -4293,7 +5851,7 @@ export class MindmapPanel {
         bindByIdClick('btnSaveAs', function () {
           try {
             setStatus(currentLang === 'zh' ? '正在另存为...' : 'Saving as...');
-            vscode.postMessage({ type: 'mindmap:requestSaveAs', tree: getTreeFromMind() });
+            vscode.postMessage({ type: 'mindmap:requestSaveAs', tree: getTreeForFileOps() });
           } catch (e) {
             const msg = e && e.message ? e.message : String(e);
             notifyInvalidAction((currentLang === 'zh' ? '另存为失败：' : 'Save As failed: ') + msg);
@@ -4328,9 +5886,25 @@ export class MindmapPanel {
           });
         });
 
-        // Double-click selected node to edit text.
-        elOn(jsmindContainerEl, 'dblclick', function () {
-          editSelectedByPrompt();
+        // Double-click node => edit text; double-click blank canvas => add child under selection (or root).
+        elOn(jsmindContainerEl, 'dblclick', function (e) {
+          if (!jm || !jsmindContainerEl) return;
+          const onNode = e.target ? getNodeElFromTarget(e.target) : null;
+          if (onNode) {
+            editSelectedByPrompt();
+            return;
+          }
+          const parent = getActiveSelectedNode() || (jm.get_root ? jm.get_root() : null);
+          if (!parent) return;
+          const newId = 'n_' + Math.random().toString(16).slice(2);
+          const topic = t('defaultChildTopic');
+          jm.add_node(parent, newId, topic, null);
+          markContentDirty();
+          selectNodeById(newId);
+          try {
+            e.preventDefault();
+            e.stopPropagation();
+          } catch (_) {}
         });
 
         elOn(
@@ -4386,7 +5960,10 @@ export class MindmapPanel {
         );
 
         // Keyboard interaction (Windows-like):
-        // Enter => sibling, Tab => child; Ctrl/Cmd+C / X 复制剪切子树；V 粘贴见 paste 事件。
+        // Enter => 新建兄弟节点并选中新节点；Tab（在画布内）=> 新建子节点并选中新节点；
+        // Delete / Backspace => 删除当前选中节点；
+        // Alt+↑/↓ => 调整兄弟顺序；Alt+←/→ => 提升 / 下降；
+        // Ctrl/Cmd+C / X 复制剪切子树；V 粘贴见 paste 事件。
         window.addEventListener('keydown', function (e) {
           const target = e.target;
           const isTyping =
@@ -4399,6 +5976,34 @@ export class MindmapPanel {
             );
           if (isTyping) return;
 
+          // Alt+↑/↓：兄弟顺序；Alt+←/→：提升 / 下降（父子关系）。
+          if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+            if (e.key === 'ArrowUp') {
+              moveSiblingUp();
+              e.preventDefault();
+              e.stopPropagation();
+              return;
+            }
+            if (e.key === 'ArrowDown') {
+              moveSiblingDown();
+              e.preventDefault();
+              e.stopPropagation();
+              return;
+            }
+            if (e.key === 'ArrowLeft') {
+              promoteNode();
+              e.preventDefault();
+              e.stopPropagation();
+              return;
+            }
+            if (e.key === 'ArrowRight') {
+              demoteNode();
+              e.preventDefault();
+              e.stopPropagation();
+              return;
+            }
+          }
+
           if (e.key === 'Enter') {
             const node = getActiveSelectedNode();
             if (!node) return;
@@ -4408,9 +6013,23 @@ export class MindmapPanel {
             return;
           }
           if (e.key === 'Tab') {
-            const node = getActiveSelectedNode();
-            if (!node) return;
-            addChild();
+            const inCanvas =
+              canvasWrapEl &&
+              e.target instanceof Node &&
+              canvasWrapEl.contains(e.target);
+            if (inCanvas) {
+              const node = getActiveSelectedNode();
+              if (node) {
+                addChild();
+              }
+              e.preventDefault();
+              e.stopPropagation();
+              return;
+            }
+          }
+
+          if (e.key === 'Delete' || e.key === 'Backspace') {
+            deleteNode();
             e.preventDefault();
             e.stopPropagation();
             return;
@@ -4439,7 +6058,7 @@ export class MindmapPanel {
             if (e.shiftKey) {
               try {
                 setStatus(currentLang === 'zh' ? '正在另存为...' : 'Saving as...');
-                vscode.postMessage({ type: 'mindmap:requestSaveAs', tree: getTreeFromMind() });
+                vscode.postMessage({ type: 'mindmap:requestSaveAs', tree: getTreeForFileOps() });
               } catch (err) {
                 const msg = err && err.message ? err.message : String(err);
                 notifyInvalidAction((currentLang === 'zh' ? '另存为失败：' : 'Save As failed: ') + msg);
@@ -4646,9 +6265,69 @@ export class MindmapPanel {
           hideContextMenus();
         });
 
-        elOn(statusbarZoomEl, 'dblclick', function () {
+        elOn(canvasZoomValueEl, 'dblclick', function (e) {
+          e.stopPropagation();
           resetZoom();
         });
+        elOn(document.getElementById('canvasZoomFit'), 'click', function (e) {
+          e.stopPropagation();
+          fitAll();
+        });
+        elOn(document.getElementById('canvasZoomCenterRoot'), 'click', function (e) {
+          e.stopPropagation();
+          centerRoot();
+        });
+        elOn(document.getElementById('canvasZoomReset'), 'click', function (e) {
+          e.stopPropagation();
+          resetZoom();
+        });
+        elOn(document.getElementById('canvasZoomOut'), 'click', function (e) {
+          e.stopPropagation();
+          zoomByStep(-0.1);
+        });
+        elOn(document.getElementById('canvasZoomIn'), 'click', function (e) {
+          e.stopPropagation();
+          zoomByStep(0.1);
+        });
+
+        if (statusbarEl) {
+          statusbarEl.addEventListener('click', function (e) {
+            const t = e.target;
+            if (t && t.closest && t.closest('#statusbarSaveLight')) {
+              return;
+            }
+            showLogDialog();
+          });
+        }
+        bindByIdClick('logCopyBtn', function () {
+          copyLogToClipboard();
+        });
+        bindByIdClick('logCloseBtn', function () {
+          hideLogDialog();
+        });
+        bindByIdClick('menuOpenLog', function () {
+          showLogDialog();
+        });
+        if (logDialogEl) {
+          logDialogEl.addEventListener('click', function (e) {
+            if (e.target === logDialogEl) {
+              hideLogDialog();
+            }
+          });
+        }
+        document.addEventListener(
+          'keydown',
+          function (e) {
+            if (e.key !== 'Escape') {
+              return;
+            }
+            if (logDialogEl && !logDialogEl.classList.contains('hidden')) {
+              hideLogDialog();
+              e.preventDefault();
+            }
+          },
+          true
+        );
 
         const menubarEl = document.querySelector('.menubar');
         const menuDetails = menubarEl ? Array.from(menubarEl.querySelectorAll('details')) : [];
@@ -4680,7 +6359,7 @@ export class MindmapPanel {
           e.stopPropagation();
           try {
             setStatus(currentLang === 'zh' ? '正在另存为...' : 'Saving as...');
-            vscode.postMessage({ type: 'mindmap:requestSaveAs', tree: getTreeFromMind() });
+            vscode.postMessage({ type: 'mindmap:requestSaveAs', tree: getTreeForFileOps() });
           } catch (err) {
             const msg = err && err.message ? err.message : String(err);
             notifyInvalidAction((currentLang === 'zh' ? '另存为失败：' : 'Save As failed: ') + msg);
@@ -4708,6 +6387,27 @@ export class MindmapPanel {
         bindByIdClick('menuCollapse', collapseSelected);
         bindByIdClick('menuToggle', toggleSelected);
         bindByIdClick('menuExpandAll', expandAll);
+        bindByIdClick('menuInsertImage', function () {
+          insertEmbedChild('image');
+        });
+        bindByIdClick('menuInsertText', function () {
+          insertEmbedChild('text');
+        });
+        bindByIdClick('menuInsertWhiteboard', function () {
+          insertEmbedChild('whiteboard');
+        });
+        bindByIdClick('menuInsertVideo', function () {
+          insertEmbedChild('video');
+        });
+        bindByIdClick('menuInsertAudio', function () {
+          insertEmbedChild('audio');
+        });
+        bindByIdClick('menuInsertGltf', function () {
+          insertEmbedChild('gltf');
+        });
+        bindByIdClick('menuInsertTable', function () {
+          insertEmbedChild('table');
+        });
         function applyTheme(name) {
           const themeName = (name || '').toString().trim().toLowerCase();
           if (!themeName) return;
@@ -4999,6 +6699,207 @@ export class MindmapPanel {
             return;
           }
         });
+
+        function installBrowserMindmapHost() {
+          if (!window.__MINDMAP_BROWSER_FILE_OPS__) {
+            return;
+          }
+          var saveHandle = null;
+          var suggestedSaveName = 'mindmap.mmd';
+
+          function coreOk() {
+            return (
+              window.MindmapCore &&
+              typeof window.MindmapCore.parseCoreMindmapText === 'function' &&
+              typeof window.MindmapCore.serializeCoreMindmapTree === 'function'
+            );
+          }
+
+          function browserConfirmDiscardSync() {
+            if (!contentDirty) {
+              return true;
+            }
+            return window.confirm(
+              currentLang === 'zh'
+                ? '当前有未保存的更改，确定要继续吗？'
+                : 'You have unsaved changes. Continue?'
+            );
+          }
+
+          async function browserSaveTree(tree, forcePicker) {
+            var C = window.MindmapCore;
+            if (!C || !tree || !tree.root) {
+              notifyInvalidAction(
+                currentLang === 'zh' ? '无法保存：数据无效。' : 'Cannot save: invalid data.'
+              );
+              return;
+            }
+            var ext = window.__mindmapBrowserDocExt === 'jm' ? 'jm' : 'mmd';
+            if (!forcePicker && saveHandle && saveHandle.createWritable) {
+              try {
+                var text0 = C.serializeCoreMindmapTree(tree, ext);
+                var w = await saveHandle.createWritable();
+                await w.write(text0);
+                await w.close();
+                setContentClean();
+                setStatus(currentLang === 'zh' ? '已保存' : 'Saved');
+                return;
+              } catch (_) {
+                saveHandle = null;
+              }
+            }
+            if (typeof window.showSaveFilePicker === 'function') {
+              try {
+                var pick = await window.showSaveFilePicker({
+                  suggestedName: suggestedSaveName || 'mindmap.' + ext,
+                  types: [
+                    {
+                      description: 'Mindmap',
+                      accept: {
+                        'text/plain': ['.mmd'],
+                        'application/json': ['.jm']
+                      }
+                    }
+                  ]
+                });
+                saveHandle = pick;
+                var pickedName = pick.name || '';
+                ext = pickedName.toLowerCase().endsWith('.jm') ? 'jm' : 'mmd';
+                try {
+                  window.__mindmapBrowserDocExt = ext;
+                } catch (_) {}
+                suggestedSaveName = pickedName || 'mindmap.' + ext;
+                var text1 = C.serializeCoreMindmapTree(tree, ext);
+                var writable = await pick.createWritable();
+                await writable.write(text1);
+                await writable.close();
+                setContentClean();
+                setStatus(currentLang === 'zh' ? '已保存' : 'Saved');
+                return;
+              } catch (e) {
+                if (e && e.name === 'AbortError') {
+                  return;
+                }
+                saveHandle = null;
+              }
+            }
+            var ext2 = window.__mindmapBrowserDocExt === 'jm' ? 'jm' : 'mmd';
+            var textDl = C.serializeCoreMindmapTree(tree, ext2);
+            var blob = new Blob([textDl], { type: 'text/plain;charset=utf-8' });
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = suggestedSaveName || 'mindmap.' + ext2;
+            a.click();
+            URL.revokeObjectURL(a.href);
+            setContentClean();
+            setStatus(currentLang === 'zh' ? '已触发下载' : 'Download started');
+          }
+
+          function dispatch(msg) {
+            if (!msg || typeof msg.type !== 'string') {
+              return false;
+            }
+            var ty = msg.type;
+            if (ty === 'mindmap:setUiLanguage') {
+              applyLanguage(msg.language === 'zh' ? 'zh' : 'en');
+              return true;
+            }
+            if (
+              ty === 'mindmap:requestNew' ||
+              ty === 'mindmap:requestOpen' ||
+              ty === 'mindmap:requestSave' ||
+              ty === 'mindmap:requestSaveAs'
+            ) {
+              if (!coreOk()) {
+                notifyInvalidAction(
+                  currentLang === 'zh'
+                    ? '未加载 mindmap-core.js，无法使用文件功能。'
+                    : 'mindmap-core.js is not loaded; file actions are unavailable.'
+                );
+                return true;
+              }
+            }
+            if (ty === 'mindmap:requestNew') {
+              if (!browserConfirmDiscardSync()) {
+                return true;
+              }
+              saveHandle = null;
+              suggestedSaveName = 'mindmap.mmd';
+              try {
+                window.__mindmapBrowserDocExt = 'mmd';
+              } catch (_) {}
+              suppressDirty = true;
+              try {
+                init(
+                  { root: { id: 'root', topic: 'New Mindmap', children: [] } },
+                  'mmd'
+                );
+                setContentClean();
+                setStatus(currentLang === 'zh' ? '已新建' : 'New mindmap');
+              } finally {
+                suppressDirty = false;
+              }
+              return true;
+            }
+            if (ty === 'mindmap:requestOpen') {
+              if (!browserConfirmDiscardSync()) {
+                return true;
+              }
+              var input = document.createElement('input');
+              input.type = 'file';
+              input.accept = '.mmd,.jm,.xmind';
+              input.onchange = function () {
+                var f = input.files && input.files[0];
+                if (!f) {
+                  return;
+                }
+                var extFile = (f.name.split('.').pop() || '').toLowerCase();
+                if (extFile === 'xmind') {
+                  notifyInvalidAction(
+                    currentLang === 'zh'
+                      ? '浏览器预览暂不支持打开 .xmind，请使用 VS Code 扩展。'
+                      : 'Opening .xmind is not supported in browser preview; use the VS Code extension.'
+                  );
+                  return;
+                }
+                var reader = new FileReader();
+                reader.onload = function () {
+                  var text = String(reader.result || '');
+                  var parseExt = extFile === 'jm' ? 'jm' : 'mmd';
+                  try {
+                    var treeOpen = window.MindmapCore.parseCoreMindmapText(text, parseExt);
+                    saveHandle = null;
+                    suggestedSaveName = f.name || 'mindmap.mmd';
+                    suppressDirty = true;
+                    init(treeOpen, parseExt);
+                    suppressDirty = false;
+                    setContentClean();
+                    setStatus(currentLang === 'zh' ? '已打开' : 'Opened');
+                  } catch (ex) {
+                    var em = ex && ex.message ? ex.message : String(ex);
+                    notifyInvalidAction((currentLang === 'zh' ? '打开失败：' : 'Open failed: ') + em);
+                  }
+                };
+                reader.readAsText(f);
+              };
+              input.click();
+              return true;
+            }
+            if (ty === 'mindmap:requestSave') {
+              void browserSaveTree(msg.tree, false);
+              return true;
+            }
+            if (ty === 'mindmap:requestSaveAs') {
+              void browserSaveTree(msg.tree, true);
+              return true;
+            }
+            return false;
+          }
+
+          window.__mindmapBrowserDispatch = dispatch;
+        }
+
+        installBrowserMindmapHost();
 
         if (
           typeof __MINDMAP_BOOT__ === 'object' &&
