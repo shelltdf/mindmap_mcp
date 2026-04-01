@@ -4,7 +4,7 @@
 |-----------|------|
 | 扩展激活、命令注册、AI 命令 | `mindmap_vscode/src/extension.ts` |
 | MCP HTTP 桥、schema 文本 | `mindmap_vscode/src/bridge.ts` |
-| Webview 面板、MCP 持久化提示 | `mindmap_vscode/src/panel.ts` |
+| Webview 面板、MCP 持久化提示、换树策略、格式/主题 Dock、视图平移与 ResizeObserver、`mindmap:requestToggleFullScreen` | `mindmap_vscode/src/panel.ts` |
 | 左侧基础 Dock（`#dockLeft`：`dock-edge` / `dock-display`） | `mindmap_vscode/src/panel.ts`（模板 HTML + 内联样式） |
 | 右侧多功能 Dock（`#dockRight`：`dock-display` / `dock-edge`） | `mindmap_vscode/src/panel.ts`（模板 HTML + 内联样式） |
 | CustomTextEditor | `mindmap_vscode/src/mindmapCustomTextEditor.ts` |

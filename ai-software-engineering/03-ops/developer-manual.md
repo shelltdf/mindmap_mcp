@@ -39,6 +39,7 @@
 ## 空白脑图与「新建」语义
 
 - **工厂方法**：`createBlankMindmapTree()`（`src/mindmap/model.ts`）→ `createBlankCoreMindmapTree()`（`src/shared/mindmapCore.ts`）。根 id 为 **`r_` + 随机**，子节点为空；扩展命令「新建文件」、面板「新建」、空文档回退、未命名文档还原等路径应使用该工厂，避免与上一份脑图共用一个固定 `root` id。
+- **Webview 换树**：`MindmapPanel._loadTreeIntoWebview` 在 Webview 已 **`mindmap:ready`** 后仅 **`postMessage(setTree)`**，避免反复设置 `webview.html`；行为与物理规格 `02-physical/mindmap-vscode-extension/spec.md` 一致。
 - **Webview `init`**：每次加载树前清空 `#jsmind_container` 并重置框选/选中，再 `new jsMind` + `show`。
 
 ## 快捷键与无效操作提示

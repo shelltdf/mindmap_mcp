@@ -8,7 +8,18 @@
 ## 空白 / 新建与根节点
 
 - **默认空白树**由 `createBlankMindmapTree()` / `createBlankCoreMindmapTree()` 生成：仅根节点、无子节点；根 **id 每次新建**（`r_…`），与固定字符串 `root` 脱钩，避免会话间混用同一根 id。
-- **Webview `init`**：在实例化 jsMind 前清空画布容器 DOM 并重置框选与选中，保证「新建」或整页重载后为干净画布。
+- **Webview `init`**：在实例化 jsMind 前清空画布容器 DOM 并重置框选与选中，保证换树后为干净画布。
+- **换树与闪烁**：扩展侧在 Webview **首次** `mindmap:ready` 之前必须将树注入 **HTML**；就绪后同一面板再换树（新建、打开等）仅 **`postMessage(mindmap:setTree)`**，避免反复 **`webview.html = …`** 导致整页白屏闪烁。
+
+## 视图：平移缩放与客户区尺寸
+
+- 外层对 `#jsmind_container` 使用 `translate(panX, panY) scale(zoom)`（`applyViewTransform`）。
+- **客户区-only 尺寸变化**（非缩放）：`ResizeObserver` 监听 `#canvasWrap`，按 **Δw/2、Δh/2** 修正 `pan`，保持**视口中心**下所见内容稳定；`centerRoot` / `fitAll` 等重算 pan 后同步「锚点」尺寸，避免双计。
+
+## 右 Dock：格式 / 图标 / 脑图主题
+
+- **格式**：绑定当前选中节点；无选中则禁用并清空。展示值优先 `node.data`，否则从 DOM 读**非选中态**计算样式（避免高亮色）；颜色归一为 hex。
+- **全屏**：页面内 **Ctrl+Space**（及标题栏按钮）经宿主执行 **工作台全屏**；与 `package.json` 全局 **Ctrl+Space → toggleDock** 并存，焦点在 Webview 时通常由页面消费。
 
 ## 快捷键与无效操作反馈
 

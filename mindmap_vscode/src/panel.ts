@@ -187,6 +187,11 @@ export class MindmapPanel {
   private readonly _extensionUri: vscode.Uri;
   private _titleBase = '';
   private _dirty = false;
+  /**
+   * Webview 内脚本已跑完并上报 `mindmap:ready` 后为 true；之后换树只 postMessage，避免整页重设 `webview.html` 造成白屏闪烁。
+   * 文档：`ai-software-engineering/02-physical/mindmap-vscode-extension/spec.md`（脑图数据与 Webview 初始化 / 换树策略）。
+   */
+  private _webviewJsReady = false;
   private _reqSeq = 0;
   private readonly _pendingHostRequests = new Map<
     string,
@@ -417,14 +422,25 @@ export class MindmapPanel {
   }
 
   private async _loadTreeIntoWebview(tree: MindmapTree, ext: FileExt) {
-    await this._prepareWebviewHtmlReload();
     this._ext = ext;
     this._syncTitleBase();
     this._dirty = false;
     this._applyTitle();
 
-    // 初始树必须随 HTML 注入：若在设置 html 后立即 postMessage(setTree)，
-    // 往往在页面末尾才注册 window message 监听器，消息会丢失导致空白画布。
+    // 首次加载：必须把树塞进 HTML，否则脚本末尾才注册 message 监听器时 postMessage 会丢。
+    // 之后（已 mindmap:ready）：只 postMessage 换树，避免整页替换 webview.html 导致明显白屏/闪烁。
+    if (this._webviewJsReady) {
+      void this._panel.webview.postMessage({
+        type: 'mindmap:setTree',
+        tree,
+        ext,
+        uiLanguage: this._uiLanguage
+      });
+      void this._syncBackingFileWatcherAfterLoad();
+      return;
+    }
+
+    await this._prepareWebviewHtmlReload();
     const html = this._getHtmlForWebview(this._panel.webview, { tree, ext });
     if (this._shouldDumpWebviewHtml()) {
       try {
@@ -839,6 +855,7 @@ export class MindmapPanel {
     if (!msg || typeof msg !== 'object') return;
 
     if (msg.type === 'mindmap:ready') {
+      this._webviewJsReady = true;
       this._postSaveTrafficLightToWebview();
       return;
     }
@@ -2078,6 +2095,7 @@ export class MindmapPanel {
       .canvas_wrap {
         flex: 1 1 auto;
         min-width: 0;
+        min-height: 0;
         height: 100%;
         width: 100%;
         overflow: hidden !important;
@@ -2086,6 +2104,82 @@ export class MindmapPanel {
         justify-content: stretch;
         background-color: var(--mm-bg-canvas);
         position: relative;
+      }
+      /* Shortcut strip: hover shows popover; last child of canvas_wrap, z-index over jsMind */
+      .canvas-shortcut-hints {
+        position: absolute;
+        left: var(--mm-space-3);
+        top: var(--mm-space-3);
+        z-index: 25;
+        isolation: isolate;
+        pointer-events: auto;
+        margin: 0;
+        padding: 0;
+      }
+      .canvas-shortcut-hints-trigger {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 12px;
+        box-sizing: border-box;
+        border-radius: var(--mm-radius-sm);
+        font-size: 11px;
+        letter-spacing: 0.01em;
+        font-weight: 600;
+        color: #ffffff;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+        background: rgba(15, 23, 42, 0.55);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+        cursor: default;
+        user-select: none;
+        max-width: min(420px, 92vw);
+      }
+      .canvas-shortcut-hints:hover .canvas-shortcut-hints-trigger,
+      .canvas-shortcut-hints:focus-within .canvas-shortcut-hints-trigger {
+        background: rgba(15, 23, 42, 0.72);
+      }
+      .canvas-shortcut-hints-trigger:focus-visible {
+        outline: 2px solid rgba(255, 255, 255, 0.65);
+        outline-offset: 1px;
+      }
+      .canvas-shortcut-hints-popover {
+        display: none;
+        position: absolute;
+        left: 0;
+        top: 100%;
+        margin: 0;
+        min-width: min(300px, calc(100vw - 48px));
+        max-width: min(420px, calc(100vw - 48px));
+        max-height: min(70vh, 520px);
+        overflow-x: hidden;
+        overflow-y: auto;
+        padding: 10px 12px 12px;
+        box-sizing: border-box;
+        font-size: 11px;
+        line-height: 1.55;
+        letter-spacing: 0.01em;
+        white-space: pre-line;
+        color: #ffffff;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+        background: rgba(15, 23, 42, 0.94);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        border-radius: var(--mm-radius-sm);
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.38);
+        pointer-events: auto;
+        user-select: text;
+      }
+      .canvas-shortcut-hints:hover .canvas-shortcut-hints-popover,
+      .canvas-shortcut-hints:focus-within .canvas-shortcut-hints-popover {
+        display: block;
+      }
+      html[data-mm-ui='dark'] .canvas-shortcut-hints-trigger {
+        background: rgba(15, 23, 42, 0.62);
+        border-color: rgba(255, 255, 255, 0.14);
+      }
+      html[data-mm-ui='dark'] .canvas-shortcut-hints:hover .canvas-shortcut-hints-trigger,
+      html[data-mm-ui='dark'] .canvas-shortcut-hints:focus-within .canvas-shortcut-hints-trigger {
+        background: rgba(15, 23, 42, 0.78);
       }
       .gridLayer {
         position: absolute;
@@ -2098,13 +2192,6 @@ export class MindmapPanel {
           linear-gradient(90deg, rgba(90, 100, 120, 0.10) 1px, transparent 1px);
         background-size: 20px 20px;
       }
-      .debugBounds {
-        position: absolute;
-        pointer-events: none;
-        z-index: 6;
-        box-sizing: border-box;
-      }
-      .debugBounds.hidden { display: none; }
       .fallbackTree {
         position: absolute;
         inset: var(--mm-space-3);
@@ -2145,25 +2232,6 @@ export class MindmapPanel {
       }
       .fallbackTree li {
         margin: 2px 0;
-      }
-      .debugViewportFrame {
-        inset: 0;
-        border: 2px dashed rgba(220, 38, 38, 0.9);
-      }
-      .debugInnerFrame {
-        border: 2px dashed rgba(37, 99, 235, 0.9);
-      }
-      .debugBoundsLabel {
-        position: absolute;
-        left: 6px;
-        top: 6px;
-        font-size: 11px;
-        line-height: 1.25;
-        padding: 2px 6px;
-        border-radius: 6px;
-        background: rgba(17, 24, 39, 0.72);
-        color: #fff;
-        white-space: nowrap;
       }
       #jsmind_container {
         width: 100%;
@@ -3058,9 +3126,6 @@ export class MindmapPanel {
           <button id="menuCopy">Copy</button>
           <button id="menuCut">Cut</button>
           <button id="menuPaste">Paste</button>
-          <button id="menuPromote">Promote</button>
-          <button id="menuDemote">Demote</button>
-          <button id="menuApplyTitle">Apply Title</button>
         </div>
       </details>
       <details>
@@ -3087,7 +3152,8 @@ export class MindmapPanel {
       <details>
         <summary id="sumModify">Modify</summary>
         <div class="menuItems">
-          <button id="menuModifyPlaceholder" disabled>(none)</button>
+          <button id="menuPromote">Promote</button>
+          <button id="menuDemote">Demote</button>
         </div>
       </details>
       <details>
@@ -3121,7 +3187,7 @@ export class MindmapPanel {
         <summary id="sumHelp">Help</summary>
         <div class="menuItems">
           <button id="menuOpenLog">View Log</button>
-          <button id="menuToggleDebugBounds">Toggle Debug Bounds</button>
+          <button id="menuSupportedFormats">Supported formats…</button>
         </div>
       </details>
     </div>
@@ -3138,12 +3204,6 @@ export class MindmapPanel {
         <div class="gridLayer" id="gridLayer"></div>
         <div class="fallbackTree hidden" id="fallbackTree"></div>
         <div class="rootMirror hidden" id="rootMirror"></div>
-        <div class="debugBounds debugViewportFrame hidden" id="debugViewportFrame">
-          <span class="debugBoundsLabel" id="debugViewportLabel">Visible region</span>
-        </div>
-        <div class="debugBounds debugInnerFrame hidden" id="debugInnerFrame">
-          <span class="debugBoundsLabel" id="debugInnerLabel">Inner region</span>
-        </div>
         <div id="jsmind_container"></div>
         <div id="canvasZoomStack" class="canvas-zoom-stack" role="group">
           <div class="canvas-zoom-actions">
@@ -3156,6 +3216,26 @@ export class MindmapPanel {
             <span id="canvasZoomValue" class="canvas-zoom-value">100%</span>
             <button type="button" id="canvasZoomIn" class="canvas-zoom-btn" tabindex="0">+</button>
           </div>
+        </div>
+        <div class="canvas-shortcut-hints" id="canvasShortcutHints">
+          <div
+            class="canvas-shortcut-hints-trigger"
+            id="canvasShortcutHintsTrigger"
+            tabindex="0"
+            role="button"
+            aria-haspopup="true"
+            aria-expanded="false"
+            aria-controls="canvasShortcutHintsBody"
+          >
+            <span id="canvasShortcutHintsTitleText">Shortcuts</span>
+          </div>
+          <div
+            class="canvas-shortcut-hints-popover"
+            id="canvasShortcutHintsBody"
+            role="region"
+            aria-labelledby="canvasShortcutHintsTrigger"
+            aria-hidden="true"
+          ></div>
         </div>
       </div>
       <div class="dock-right-stack" id="dockRightStack">
@@ -3285,7 +3365,7 @@ export class MindmapPanel {
       <button id="ctxDemoteNode">下降</button>
       <button id="ctxAddChild">添加子节点</button>
       <button id="ctxAddSibling">添加兄弟节点</button>
-      <button id="ctxDeleteNode">删除当前节点</button>
+      <button id="ctxDeleteNode">删除</button>
     </div>
     <div class="ctxMenu hidden" id="canvasCtxMenu">
       <div class="ctxMenuTitle" id="canvasCtxTitle">画布右键菜单</div>
@@ -3637,7 +3717,7 @@ export class MindmapPanel {
             canvasCtxTitle: 'Canvas Context Menu',
             ctxAddChild: 'Add Child Node',
             ctxAddSibling: 'Add Sibling Node',
-            ctxDeleteNode: 'Delete Current Node',
+            ctxDeleteNode: 'Delete',
             ctxCopyNode: 'Copy',
             ctxCutNode: 'Cut',
             ctxPasteNode: 'Paste',
@@ -3648,6 +3728,14 @@ export class MindmapPanel {
             ctxFitAll: 'Fit All',
             ctxResetZoom: 'Reset Zoom',
             menuOpenLog: 'View Log',
+            menuSupportedFormats: 'Supported formats…',
+            helpSupportedFormatsTitle: 'Supported file formats',
+            helpSupportedFormatsBody:
+              'This editor supports the following types:\n\n' +
+              '• .jm — jsMind mind map (node_tree JSON). Full read/write.\n\n' +
+              '• .mmd — Indent-based mind map in the Mermaid mindmap style (grammar is implementation-specific). As a Custom Text Editor, the file is a normal text document (dirty indicator, Ctrl+S).\n\n' +
+              '• .xmind — XMind workbook. Open/save supported; some structure commands may be hidden in the “xmind style” UI (see current build).\n\n' +
+              'Use File → Open / Save As and choose the extension; the format follows the file suffix.',
             logDialogTitle: 'Log',
             logCopyAll: 'Copy all',
             logClose: 'Close',
@@ -3660,6 +3748,24 @@ export class MindmapPanel {
             zoomBadgeReset: 'Reset',
             zoomStackAria: 'Fit view, center root, reset zoom, and scale controls',
             zoomControlsAria: 'Zoom controls',
+            canvasShortcutHintsTitle: 'Shortcuts',
+            canvasShortcutHintsHoverTitle: 'Hover to show the full shortcut list',
+            canvasShortcutHints:
+              '— After selecting a node —\n' +
+              '↑↓ — siblings\n' +
+              '← — parent\n' +
+              '→ — first child\n' +
+              'Enter — sibling\n' +
+              'Tab — child\n' +
+              'Del / ⌫ — delete\n' +
+              'Alt+↑↓ — reorder\n' +
+              'Alt+←→ — promote / demote\n' +
+              'Double-click node — edit topic\n' +
+              '\n' +
+              '— No selection required —\n' +
+              'Wheel — zoom\n' +
+              'MMB drag — pan\n' +
+              'Ctrl+Space — full screen',
             dockFormatEdge: 'Format dock — click to expand/collapse',
             dockIconEdge: 'Icon dock — click to expand/collapse',
             dockJsmindThemeEdge: 'Mind map theme dock — click to expand/collapse',
@@ -3712,7 +3818,6 @@ export class MindmapPanel {
             menuOpen: 'Open',
             menuSave: 'Save',
             menuSaveAs: 'Save As',
-            menuApplyTitle: 'Apply Title',
             menuCopy: 'Copy',
             menuCut: 'Cut',
             menuPaste: 'Paste',
@@ -3722,7 +3827,6 @@ export class MindmapPanel {
             menuCollapse: 'Collapse',
             menuToggle: 'Toggle',
             menuExpandAll: 'Expand All',
-            menuModifyPlaceholder: '(none)',
             menuInsertImage: 'Insert image',
             menuInsertText: 'Insert text',
             menuInsertWhiteboard: 'Insert whiteboard',
@@ -3743,7 +3847,6 @@ export class MindmapPanel {
             embedTopicPrefix_table: '[Table]',
             menuToolsNone: '(none)',
             menuToggleDock: 'Mindmap: Toggle Dock Maximized',
-            menuToggleDebugBounds: 'Toggle Debug Bounds',
             alertNoSelectAddChild: 'Select a node first, then add child node.',
             alertNoSelectAddSibling: 'Select a node first, then add sibling node.',
             alertRootNoSibling: 'Root node cannot have sibling nodes.',
@@ -3779,7 +3882,7 @@ export class MindmapPanel {
             canvasCtxTitle: '画布右键菜单',
             ctxAddChild: '添加子节点',
             ctxAddSibling: '添加兄弟节点',
-            ctxDeleteNode: '删除当前节点',
+            ctxDeleteNode: '删除',
             ctxCopyNode: '复制',
             ctxCutNode: '剪切',
             ctxPasteNode: '粘贴',
@@ -3790,6 +3893,14 @@ export class MindmapPanel {
             ctxFitAll: '全部显示',
             ctxResetZoom: '还原缩放比例',
             menuOpenLog: '查看日志',
+            menuSupportedFormats: '文件格式说明…',
+            helpSupportedFormatsTitle: '支持的文件格式',
+            helpSupportedFormatsBody:
+              '本编辑器支持下列类型：\n\n' +
+              '• .jm — jsMind 脑图（node_tree JSON），完整读写。\n\n' +
+              '• .mmd — 缩进式 Mermaid mindmap 风格文本（语法以本实现约定为准）。作为自定义文本编辑器打开时与普通文档一致（脏标记、Ctrl+S 保存）。\n\n' +
+              '• .xmind — XMind 工作簿，支持打开与保存；界面可为「xmind 风格」，部分结构命令以实现为准。\n\n' +
+              '通过「文件 → 打开 / 另存为」选择扩展名；格式由文件后缀决定。',
             logDialogTitle: '日志',
             logCopyAll: '复制全部',
             logClose: '关闭',
@@ -3802,6 +3913,24 @@ export class MindmapPanel {
             zoomBadgeReset: '还原',
             zoomStackAria: '适应画布、根节点居正、还原缩放与比例缩放',
             zoomControlsAria: '缩放控件',
+            canvasShortcutHintsTitle: '快捷键',
+            canvasShortcutHintsHoverTitle: '鼠标悬停显示完整快捷键列表',
+            canvasShortcutHints:
+              '— 选中对象后 —\n' +
+              '↑↓ — 兄弟\n' +
+              '← — 父节点\n' +
+              '→ — 首子节点\n' +
+              'Enter — 兄弟\n' +
+              'Tab — 子节点\n' +
+              'Del / 退格 — 删除\n' +
+              'Alt+↑↓ — 顺序\n' +
+              'Alt+←→ — 提升 / 下降\n' +
+              '双击节点 — 编辑内容\n' +
+              '\n' +
+              '— 无需选中 —\n' +
+              '滚轮 — 缩放\n' +
+              '中键拖拽 — 平移\n' +
+              'Ctrl+空格 — 全屏',
             dockFormatEdge: '格式 Dock — 点击展开/折叠',
             dockIconEdge: '图标 Dock — 点击展开/折叠',
             dockJsmindThemeEdge: '脑图主题 Dock — 点击展开/折叠',
@@ -3854,7 +3983,6 @@ export class MindmapPanel {
             menuOpen: '打开',
             menuSave: '保存',
             menuSaveAs: '另存为',
-            menuApplyTitle: '应用标题',
             menuCopy: '复制',
             menuCut: '剪切',
             menuPaste: '粘贴',
@@ -3864,7 +3992,6 @@ export class MindmapPanel {
             menuCollapse: '折叠',
             menuToggle: '切换展开/折叠',
             menuExpandAll: '全部展开',
-            menuModifyPlaceholder: '（无）',
             menuInsertImage: '插入图片',
             menuInsertText: '插入文字',
             menuInsertWhiteboard: '插入白板',
@@ -3885,7 +4012,6 @@ export class MindmapPanel {
             embedTopicPrefix_table: '[表格]',
             menuToolsNone: '（无）',
             menuToggleDock: '脑图：最大化/还原停靠区',
-            menuToggleDebugBounds: '切换调试边界框',
             alertNoSelectAddChild: '请先选中一个节点，再添加子节点。',
             alertNoSelectAddSibling: '请先选中一个节点，再添加兄弟节点。',
             alertRootNoSibling: '根节点不能添加兄弟节点。',
@@ -4048,6 +4174,13 @@ export class MindmapPanel {
           updateDockMaximizeButtons();
         }
 
+        function resetCanvasShortcutHintsAria() {
+          const trig = document.getElementById('canvasShortcutHintsTrigger');
+          const body = document.getElementById('canvasShortcutHintsBody');
+          if (trig) trig.setAttribute('aria-expanded', 'false');
+          if (body) body.setAttribute('aria-hidden', 'true');
+        }
+
         function applyLanguage(lang) {
           currentLang = lang === 'zh' ? 'zh' : 'en';
           const byId = (id, text) => {
@@ -4071,7 +4204,6 @@ export class MindmapPanel {
           byId('menuOpen', t('menuOpen'));
           byId('menuSave', t('menuSave'));
           byId('menuSaveAs', t('menuSaveAs'));
-          byId('menuApplyTitle', t('menuApplyTitle'));
           byId('menuCopy', t('menuCopy'));
           byId('menuCut', t('menuCut'));
           byId('menuPaste', t('menuPaste'));
@@ -4081,9 +4213,7 @@ export class MindmapPanel {
           byId('menuCollapse', t('menuCollapse'));
           byId('menuToggle', t('menuToggle'));
           byId('menuExpandAll', t('menuExpandAll'));
-          byId('menuModifyPlaceholder', t('menuModifyPlaceholder'));
           byId('menuToggleDock', t('menuToggleDock'));
-          byId('menuToggleDebugBounds', t('menuToggleDebugBounds'));
           byId('menuInsertImage', t('menuInsertImage'));
           byId('menuInsertText', t('menuInsertText'));
           byId('menuInsertWhiteboard', t('menuInsertWhiteboard'));
@@ -4093,6 +4223,7 @@ export class MindmapPanel {
           byId('menuInsertTable', t('menuInsertTable'));
           byId('menuToolsNone', t('menuToolsNone'));
           byId('menuOpenLog', t('menuOpenLog'));
+          byId('menuSupportedFormats', t('menuSupportedFormats'));
           byId('logDialogTitle', t('logDialogTitle'));
           const logCopyBtn = document.getElementById('logCopyBtn');
           const logCloseBtn = document.getElementById('logCloseBtn');
@@ -4135,6 +4266,14 @@ export class MindmapPanel {
           if (canvasZoomBadgeEl) {
             canvasZoomBadgeEl.setAttribute('aria-label', t('zoomControlsAria'));
           }
+          byId('canvasShortcutHintsTitleText', t('canvasShortcutHintsTitle'));
+          const trigShortcut = document.getElementById('canvasShortcutHintsTrigger');
+          if (trigShortcut) trigShortcut.title = t('canvasShortcutHintsHoverTitle');
+          const canvasShortcutHintsBodyEl = document.getElementById('canvasShortcutHintsBody');
+          if (canvasShortcutHintsBodyEl) {
+            canvasShortcutHintsBodyEl.textContent = t('canvasShortcutHints');
+          }
+          resetCanvasShortcutHintsAria();
           byId('objCtxTitle', t('objCtxTitle'));
           byId('canvasCtxTitle', t('canvasCtxTitle'));
           byId('ctxAddChild', t('ctxAddChild'));
@@ -4193,7 +4332,6 @@ export class MindmapPanel {
           refreshDockFromSelection();
           applyHtoolbarLabels();
           updateDockMaximizeButtons();
-          refreshDebugBounds();
           applySaveTrafficLight(saveTrafficLightState);
         }
 
@@ -4225,6 +4363,15 @@ export class MindmapPanel {
           if (errorDialogEl) errorDialogEl.classList.add('hidden');
         }
 
+        function showSupportedFormatsDialog() {
+          const titleEl = document.getElementById('errorDialogTitle');
+          if (titleEl) titleEl.textContent = t('helpSupportedFormatsTitle');
+          if (errorDialogConfirmBtn) errorDialogConfirmBtn.textContent = t('dialogConfirm');
+          if (errorDialogMsgEl) errorDialogMsgEl.textContent = t('helpSupportedFormatsBody');
+          if (errorDialogEl) errorDialogEl.classList.remove('hidden');
+          if (errorDialogConfirmBtn) errorDialogConfirmBtn.focus();
+        }
+
         function escapeHtml(s) {
           return String(s == null ? '' : s)
             .replace(/&/g, '&amp;')
@@ -4232,6 +4379,34 @@ export class MindmapPanel {
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
+        }
+        /** 不用 innerHTML 批量清空，避免与 blur/编辑并发时 Chromium 抛错（node no longer a child）。 */
+        function clearDomChildren(el) {
+          if (!el) return;
+          while (el.firstChild) {
+            try {
+              el.removeChild(el.firstChild);
+            } catch (_) {
+              break;
+            }
+          }
+        }
+        /** innerHTML 赋值失败时回退为清空再逐节点插入（同上类竞态）。 */
+        function safeSetInnerHTML(el, html) {
+          if (!el) return;
+          try {
+            el.innerHTML = html;
+          } catch (_) {
+            clearDomChildren(el);
+            if (!html) return;
+            try {
+              var wrap = document.createElement('div');
+              wrap.innerHTML = html;
+              while (wrap.firstChild) {
+                el.appendChild(wrap.firstChild);
+              }
+            } catch (_) {}
+          }
         }
         function makeFallbackTreeHtml(node) {
           if (!node) return '<li>(empty)</li>';
@@ -4245,18 +4420,20 @@ export class MindmapPanel {
         function showFallbackTree(tree) {
           if (!fallbackTreeEl) return;
           const root = tree && tree.root ? tree.root : null;
-          fallbackTreeEl.innerHTML =
+          safeSetInnerHTML(
+            fallbackTreeEl,
             '<div style="font-weight:700;margin-bottom:6px;">' +
-            (currentLang === 'zh' ? '脑图渲染降级视图' : 'Mindmap Fallback View') +
-            '</div><ul>' +
-            makeFallbackTreeHtml(root) +
-            '</ul>';
+              (currentLang === 'zh' ? '脑图渲染降级视图' : 'Mindmap Fallback View') +
+              '</div><ul>' +
+              makeFallbackTreeHtml(root) +
+              '</ul>'
+          );
           fallbackTreeEl.classList.remove('hidden');
         }
         function hideFallbackTree() {
           if (!fallbackTreeEl) return;
           fallbackTreeEl.classList.add('hidden');
-          fallbackTreeEl.innerHTML = '';
+          clearDomChildren(fallbackTreeEl);
         }
         function showRootMirror(tree) {
           if (!rootMirrorEl) return;
@@ -4522,7 +4699,7 @@ export class MindmapPanel {
             jm = null;
             try {
               var jmShell = document.getElementById('jsmind_container');
-              if (jmShell) jmShell.innerHTML = '';
+              if (jmShell) clearDomChildren(jmShell);
             } catch (_) {}
           } catch (_) {}
 
@@ -4541,6 +4718,7 @@ export class MindmapPanel {
             zoomScale = 1;
             panX = 0;
             panY = 0;
+            lastCanvasWrapObservedSize = { w: 0, h: 0 };
             try {
               if (
                 tree &&
@@ -4853,7 +5031,7 @@ export class MindmapPanel {
             { value: 'SimSun, "宋体", serif', label: 'SimSun' },
             { value: '"Segoe UI", Roboto, sans-serif', label: 'Segoe UI / Roboto' }
           ];
-          sel.innerHTML = '';
+          clearDomChildren(sel);
           for (let i = 0; i < fonts.length; i++) {
             const opt = document.createElement('option');
             opt.value = fonts[i].value;
@@ -4866,7 +5044,7 @@ export class MindmapPanel {
         function buildDockIconGrid() {
           const grid = document.getElementById('dockIconGrid');
           if (!grid) return;
-          grid.innerHTML = '';
+          clearDomChildren(grid);
           const defs = [
             { id: 'none', emoji: '∅', labelKey: 'dockIconNone' },
             { id: 'star', emoji: '⭐', labelKey: 'dockIconStar' },
@@ -4885,12 +5063,14 @@ export class MindmapPanel {
             btn.type = 'button';
             btn.className = 'dock-icon-btn';
             btn.setAttribute('data-mm-icon', def.id);
-            btn.innerHTML =
+            safeSetInnerHTML(
+              btn,
               '<span>' +
-              escapeHtml(def.emoji) +
-              '</span><span class="dock-icon-label">' +
-              escapeHtml(t(def.labelKey)) +
-              '</span>';
+                escapeHtml(def.emoji) +
+                '</span><span class="dock-icon-label">' +
+                escapeHtml(t(def.labelKey)) +
+                '</span>'
+            );
             (function (iconId) {
               btn.addEventListener('click', function () {
                 applyIconToSelection(iconId);
@@ -4920,7 +5100,7 @@ export class MindmapPanel {
         function buildDockJsmindThemeGrid() {
           const grid = document.getElementById('dockJsmindThemeGrid');
           if (!grid) return;
-          grid.innerHTML = '';
+          clearDomChildren(grid);
           for (let ti = 0; ti < supportedThemes.length; ti++) {
             const themeName = supportedThemes[ti];
             const btn = document.createElement('button');
@@ -5002,58 +5182,81 @@ export class MindmapPanel {
         }
 
         /**
-         * 格式 Dock 显示值：优先 node.data（mmFontSize/mmColor/mmBg），否则从画布 jmnode 的
-         * 计算样式读取（主题 CSS 下的默认色/字号在 data 中常为空，此前会导致控件不随选中更新）。
+         * 读取画布 jmnode 的「默认」外观（主题 + 内联），不包含选中高亮：jsMind 对选中节点加
+         * .selected，会覆盖 color/background；同步到格式 Dock 时应临时去掉该类再取计算样式。
+         */
+        function readMindNodeDefaultAppearanceFromDom(el) {
+          if (!el) return null;
+          const hadSelected = el.classList && el.classList.contains('selected');
+          if (hadSelected) el.classList.remove('selected');
+          try {
+            const cs = window.getComputedStyle(el);
+            return {
+              fontSize: cs.fontSize,
+              color: el.style && el.style.color ? el.style.color : cs.color,
+              backgroundColor:
+                el.style && el.style.backgroundColor ? el.style.backgroundColor : cs.backgroundColor
+            };
+          } finally {
+            if (hadSelected) el.classList.add('selected');
+          }
+        }
+
+        /**
+         * 格式 Dock 显示值：优先 node.data（mmFontSize/mmColor/mmBg）；否则从画布节点读取
+         * 「非高亮」下的主题默认/内联样式。
          */
         function snapshotDockFormatFromNode(node) {
           const d = node && node.data && typeof node.data === 'object' ? node.data : {};
           const el = getMindNodeViewElement(node);
+          const domDefault = el ? readMindNodeDefaultAppearanceFromDom(el) : null;
           let fontSizeStr = '';
           if (d.mmFontSize != null && String(d.mmFontSize).trim() !== '') {
             fontSizeStr = String(d.mmFontSize).trim();
-          } else if (el) {
-            const cs = window.getComputedStyle(el);
-            const fs = cs.fontSize;
-            if (fs && fs.indexOf('px') > 0) {
-              const n = parseFloat(fs);
-              if (!isNaN(n) && n > 0) fontSizeStr = String(Math.round(n));
-            }
+          } else if (domDefault && domDefault.fontSize && domDefault.fontSize.indexOf('px') > 0) {
+            const n = parseFloat(domDefault.fontSize);
+            if (!isNaN(n) && n > 0) fontSizeStr = String(Math.round(n));
           }
           let colorHex = '#333333';
           if (d.mmColor != null && String(d.mmColor).trim() !== '') {
             const h = parseCssColorToHex(String(d.mmColor).trim());
             if (h) colorHex = h;
-            else if (el) {
-              const src = el.style && el.style.color ? el.style.color : window.getComputedStyle(el).color;
-              const h2 = parseCssColorToHex(src);
+            else if (domDefault && domDefault.color) {
+              const h2 = parseCssColorToHex(domDefault.color);
               if (h2) colorHex = h2;
             }
-          } else if (el) {
-            const src = el.style && el.style.color ? el.style.color : window.getComputedStyle(el).color;
-            const h = parseCssColorToHex(src);
+          } else if (domDefault && domDefault.color) {
+            const h = parseCssColorToHex(domDefault.color);
             if (h) colorHex = h;
           }
           let bgHex = '#ffffff';
           if (d.mmBg != null && String(d.mmBg).trim() !== '') {
             const h = parseCssColorToHex(String(d.mmBg).trim());
             if (h) bgHex = h;
-            else if (el) {
-              const src =
-                el.style && el.style.backgroundColor
-                  ? el.style.backgroundColor
-                  : window.getComputedStyle(el).backgroundColor;
-              const h2 = parseCssColorToHex(src);
+            else if (domDefault && domDefault.backgroundColor) {
+              const h2 = parseCssColorToHex(domDefault.backgroundColor);
               if (h2) bgHex = h2;
             }
-          } else if (el) {
-            const src =
-              el.style && el.style.backgroundColor
-                ? el.style.backgroundColor
-                : window.getComputedStyle(el).backgroundColor;
-            const h = parseCssColorToHex(src);
+          } else if (domDefault && domDefault.backgroundColor) {
+            const h = parseCssColorToHex(domDefault.backgroundColor);
             if (h) bgHex = h;
           }
           return { fontSizeStr: fontSizeStr, colorHex: colorHex, bgHex: bgHex };
+        }
+
+        function setDockFormatFieldsDisabled(disabled) {
+          const ids = [
+            'dockInputTopic',
+            'dockInputFont',
+            'dockInputFontSize',
+            'dockInputColor',
+            'dockInputBg',
+            'dockBtnResetFormat'
+          ];
+          for (let i = 0; i < ids.length; i++) {
+            const el = document.getElementById(ids[i]);
+            if (el) el.disabled = !!disabled;
+          }
         }
 
         function refreshDockFromSelection() {
@@ -5064,6 +5267,7 @@ export class MindmapPanel {
           if (form) {
             form.classList.toggle('dock-disabled', !node);
           }
+          setDockFormatFieldsDisabled(!node);
           if (hint) {
             hint.textContent = t('dockHintNoSelection');
             hint.style.display = node ? 'none' : '';
@@ -5084,14 +5288,18 @@ export class MindmapPanel {
             }
             const fontEl = document.getElementById('dockInputFont');
             if (fontEl) {
-              const fv = d.mmFont != null ? String(d.mmFont) : '';
-              fontEl.value = fv;
-              if (fv && fontEl.value !== fv) {
-                const opt = document.createElement('option');
-                opt.value = fv;
-                opt.textContent = fv.length > 40 ? fv.slice(0, 38) + '…' : fv;
-                fontEl.appendChild(opt);
+              if (!node) {
+                fontEl.value = '';
+              } else {
+                const fv = d.mmFont != null ? String(d.mmFont) : '';
                 fontEl.value = fv;
+                if (fv && fontEl.value !== fv) {
+                  const opt = document.createElement('option');
+                  opt.value = fv;
+                  opt.textContent = fv.length > 40 ? fv.slice(0, 38) + '…' : fv;
+                  fontEl.appendChild(opt);
+                  fontEl.value = fv;
+                }
               }
             }
             const snap = node ? snapshotDockFormatFromNode(node) : null;
@@ -5101,7 +5309,7 @@ export class MindmapPanel {
             }
             const cEl = document.getElementById('dockInputColor');
             if (cEl) {
-              cEl.value = snap ? snap.colorHex : '#333333';
+              cEl.value = snap ? snap.colorHex : '#ffffff';
             }
             const bgEl = document.getElementById('dockInputBg');
             if (bgEl) {
@@ -5509,15 +5717,12 @@ export class MindmapPanel {
         // View transform: middle-button pan + wheel zoom.
         const canvasWrapEl = document.getElementById('canvasWrap');
         const gridLayerEl = document.getElementById('gridLayer');
-        const debugViewportFrameEl = document.getElementById('debugViewportFrame');
-        const debugViewportLabelEl = document.getElementById('debugViewportLabel');
-        const debugInnerFrameEl = document.getElementById('debugInnerFrame');
-        const debugInnerLabelEl = document.getElementById('debugInnerLabel');
         const jsmindContainerEl = document.getElementById('jsmind_container');
-        let debugBoundsEnabled = false;
         let zoomScale = 1;
         let panX = 0;
         let panY = 0;
+        /** 与 ResizeObserver 配合：记录画布客户区尺寸，仅在「仅尺寸变化」时补偿平移以保持视口中心下的内容不动（全屏/窗口缩放等）。 */
+        let lastCanvasWrapObservedSize = { w: 0, h: 0 };
         let isMiddleDragging = false;
         let dragStartX = 0;
         let dragStartY = 0;
@@ -5695,45 +5900,6 @@ export class MindmapPanel {
           }
         }
 
-        function refreshDebugBounds() {
-          if (!debugBoundsEnabled || !canvasWrapEl) return;
-          const wrapRect = canvasWrapEl.getBoundingClientRect();
-          if (debugViewportLabelEl) {
-            debugViewportLabelEl.textContent =
-              (currentLang === 'zh' ? '可见区域' : 'Visible') +
-              ': ' + Math.round(wrapRect.width) + 'x' + Math.round(wrapRect.height);
-          }
-
-          if (!debugInnerFrameEl || !jsmindContainerEl) return;
-          const innerEl = jsmindContainerEl.querySelector('.jsmind-inner');
-          if (!innerEl) return;
-          const innerRect = innerEl.getBoundingClientRect();
-          const left = innerRect.left - wrapRect.left;
-          const top = innerRect.top - wrapRect.top;
-          debugInnerFrameEl.style.left = left + 'px';
-          debugInnerFrameEl.style.top = top + 'px';
-          debugInnerFrameEl.style.width = innerRect.width + 'px';
-          debugInnerFrameEl.style.height = innerRect.height + 'px';
-          if (debugInnerLabelEl) {
-            debugInnerLabelEl.textContent =
-              (currentLang === 'zh' ? '内层区域' : 'Inner') +
-              ': ' + Math.round(innerRect.width) + 'x' + Math.round(innerRect.height) +
-              ' @(' + Math.round(left) + ',' + Math.round(top) + ')';
-          }
-        }
-
-        function setDebugBoundsEnabled(enabled) {
-          debugBoundsEnabled = !!enabled;
-          if (debugViewportFrameEl) debugViewportFrameEl.classList.toggle('hidden', !debugBoundsEnabled);
-          if (debugInnerFrameEl) debugInnerFrameEl.classList.toggle('hidden', !debugBoundsEnabled);
-          if (debugBoundsEnabled) {
-            refreshDebugBounds();
-            setStatus(currentLang === 'zh' ? '已开启调试边界框' : 'Debug bounds enabled');
-          } else {
-            setStatus(currentLang === 'zh' ? '已关闭调试边界框' : 'Debug bounds disabled');
-          }
-        }
-
         function applyViewTransform() {
           if (!jsmindContainerEl) return;
           jsmindContainerEl.style.transformOrigin = '0 0';
@@ -5748,8 +5914,39 @@ export class MindmapPanel {
             gridLayerEl.style.backgroundSize = base + 'px ' + base + 'px';
             gridLayerEl.style.backgroundPosition = offX + 'px ' + offY + 'px';
           }
-          refreshDebugBounds();
         }
+
+        function syncCanvasWrapResizeAnchor() {
+          if (!canvasWrapEl) return;
+          const r = canvasWrapEl.getBoundingClientRect();
+          lastCanvasWrapObservedSize.w = r.width;
+          lastCanvasWrapObservedSize.h = r.height;
+        }
+
+        /**
+         * 画布客户区宽高变化时，保持「变化前视口中心」所对准的画布内容仍落在「变化后视口中心」
+         * （等价于 pan += ΔW/2, ΔH/2，与 zoomByStep 以中心为锚点的约定一致）。
+         */
+        function installCanvasWrapResizeKeepCenter() {
+          if (!canvasWrapEl || typeof ResizeObserver === 'undefined') return;
+          const ro = new ResizeObserver(function () {
+            if (!canvasWrapEl) return;
+            const r = canvasWrapEl.getBoundingClientRect();
+            const w = r.width;
+            const h = r.height;
+            const lw = lastCanvasWrapObservedSize.w;
+            const lh = lastCanvasWrapObservedSize.h;
+            if (lw > 0 && lh > 0 && (w !== lw || h !== lh)) {
+              panX += (w - lw) / 2;
+              panY += (h - lh) / 2;
+              applyViewTransform();
+            }
+            lastCanvasWrapObservedSize.w = w;
+            lastCanvasWrapObservedSize.h = h;
+          });
+          ro.observe(canvasWrapEl);
+        }
+        installCanvasWrapResizeKeepCenter();
 
         /** 以画布客户区中心为锚点步进缩放（步长与滚轮一致 ±0.1）。 */
         function zoomByStep(delta) {
@@ -6534,6 +6731,7 @@ export class MindmapPanel {
           panX = wrapRect.width / 2 - rootX * zoomScale;
           panY = wrapRect.height / 2 - rootY * zoomScale;
           applyViewTransform();
+          syncCanvasWrapResizeAnchor();
         }
 
         function fitAll() {
@@ -6560,6 +6758,7 @@ export class MindmapPanel {
           panX = wrapRect.width / 2 - (minX + boundsW / 2) * zoomScale;
           panY = wrapRect.height / 2 - (minY + boundsH / 2) * zoomScale;
           applyViewTransform();
+          syncCanvasWrapResizeAnchor();
         }
 
         function getMindNodeTopicElement(mnode) {
@@ -6725,26 +6924,28 @@ export class MindmapPanel {
           });
         }
 
-        function applyTitle() {
-          if (!jm || !selectedNode) return;
-          const promptVal = selectedNode && selectedNode.topic ? selectedNode.topic : '';
-          const next = window.prompt('Topic title', String(promptVal != null ? promptVal : ''));
+        function editNodeTopicByPrompt(nodeIdStr) {
+          if (!jm || nodeIdStr == null) return;
+          const id = String(nodeIdStr).trim();
+          if (!id) return;
+          const node = findNodeById(id);
+          if (!node) return;
+          clearLassoMarks();
+          selectNodeById(id);
+          const current = node.topic != null ? String(node.topic) : '';
+          const promptTitle = currentLang === 'zh' ? '编辑节点内容' : 'Edit topic';
+          const next = window.prompt(promptTitle, current);
           if (next === null) return;
           const topic = next.toString().trim();
           if (!topic) return;
-          jm.update_node(selectedNode.id, topic);
+          jm.update_node(node.id, topic);
           markContentDirty();
+          refreshDockFromSelection();
         }
 
         function editSelectedByPrompt() {
           if (!jm || !selectedNode) return;
-          const current = selectedNode && selectedNode.topic ? selectedNode.topic : '';
-          const next = window.prompt('Edit topic', String(current));
-          if (next === null) return;
-          const topic = next.toString().trim();
-          if (!topic) return;
-          jm.update_node(selectedNode.id, topic);
-          markContentDirty();
+          editNodeTopicByPrompt(String(selectedNode.id));
         }
 
         function doSave() {
@@ -6998,7 +7199,15 @@ export class MindmapPanel {
           if (!jm || !jsmindContainerEl) return;
           const onNode = e.target ? getNodeElFromTarget(e.target) : null;
           if (onNode) {
-            editSelectedByPrompt();
+            const holder = onNode.closest ? onNode.closest('[nodeid]') : onNode;
+            const nid = holder && holder.getAttribute ? holder.getAttribute('nodeid') : null;
+            if (nid) {
+              editNodeTopicByPrompt(String(nid));
+            }
+            try {
+              e.preventDefault();
+              e.stopPropagation();
+            } catch (_) {}
             return;
           }
           const parent = getActiveSelectedNode() || (jm.get_root ? jm.get_root() : null);
@@ -7074,6 +7283,18 @@ export class MindmapPanel {
         // Alt+↑/↓ => 调整兄弟顺序；Alt+←/→ => 提升 / 下降；
         // Ctrl/Cmd+C / X 复制剪切子树；V 粘贴见 paste 事件。
         window.addEventListener('keydown', function (e) {
+          // 主窗口任意位置：Ctrl+空格 => 全屏切换（与标题栏全屏按钮一致，优先于输入区拦截）。
+          if (
+            e.ctrlKey &&
+            !e.metaKey &&
+            !e.altKey &&
+            (e.key === ' ' || e.code === 'Space')
+          ) {
+            e.preventDefault();
+            e.stopPropagation();
+            vscode.postMessage({ type: 'mindmap:requestToggleFullScreen' });
+            return;
+          }
           const target = e.target;
           const isTyping =
             target &&
@@ -7362,7 +7583,6 @@ export class MindmapPanel {
         });
         window.addEventListener('resize', function () {
           hideContextMenus();
-          refreshDebugBounds();
         });
 
         bindByIdClick('ctxCopyNode', function () {
@@ -7462,6 +7682,34 @@ export class MindmapPanel {
         bindByIdClick('menuOpenLog', function () {
           showLogDialog();
         });
+        bindByIdClick('menuSupportedFormats', function () {
+          showSupportedFormatsDialog();
+        });
+        (function bindShortcutHintsHoverAria() {
+          const wrap = document.getElementById('canvasShortcutHints');
+          const trig = document.getElementById('canvasShortcutHintsTrigger');
+          const body = document.getElementById('canvasShortcutHintsBody');
+          if (!wrap || !trig || !body) return;
+          function setOpen(open) {
+            trig.setAttribute('aria-expanded', open ? 'true' : 'false');
+            body.setAttribute('aria-hidden', open ? 'false' : 'true');
+          }
+          wrap.addEventListener('mouseenter', function () {
+            setOpen(true);
+          });
+          wrap.addEventListener('mouseleave', function () {
+            setOpen(false);
+          });
+          wrap.addEventListener('focusin', function () {
+            setOpen(true);
+          });
+          wrap.addEventListener('focusout', function (e) {
+            const rt = e.relatedTarget;
+            if (!(rt instanceof Node) || !wrap.contains(rt)) {
+              setOpen(false);
+            }
+          });
+        })();
         if (logDialogEl) {
           logDialogEl.addEventListener('click', function (e) {
             if (e.target === logDialogEl) {
@@ -7536,7 +7784,6 @@ export class MindmapPanel {
         bindByIdClick('menuDemote', function () {
           demoteNode();
         });
-        bindByIdClick('menuApplyTitle', applyTitle);
         bindByIdClick('menuExpand', expandSelected);
         bindByIdClick('menuCollapse', collapseSelected);
         bindByIdClick('menuToggle', toggleSelected);
@@ -7599,9 +7846,6 @@ export class MindmapPanel {
         });
         bindByIdClick('btnTitleFullScreen', function () {
           vscode.postMessage({ type: 'mindmap:requestToggleFullScreen' });
-        });
-        bindByIdClick('menuToggleDebugBounds', function () {
-          setDebugBoundsEnabled(!debugBoundsEnabled);
         });
 
         // Windows-like menubar behavior:

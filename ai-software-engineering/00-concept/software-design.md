@@ -13,7 +13,7 @@
    针对 `.mmd` / `.jm`：Webview + 文档缓冲区双向同步。
 
 3. **Webview 面板**（`src/panel.ts` + `media/`）  
-   空白脑图、`.xmind` 等路径：独立面板；多实例与脏状态策略见扩展 README。页面内为 **单页 SDI**：左 **Dock**（`dockLeft`）与右 **Dock**（`dockRight`）均为 `dock-edge` + `dock-display` 结构；右 Dock 缘条贴最右；中为 jsMind 画布。
+   空白脑图、`.xmind` 等路径：独立面板；多实例与脏状态策略见扩展 README。页面内为 **单页 SDI**：左 **Dock**（`dockLeft`）；右侧 **`dockRightStack`** 内多个 **Dock**（格式、图标、脑图主题等）；中为 jsMind 画布。首次注入后换树以 `postMessage` 为主，见物理规格 **mindmap-vscode-extension/spec.md**。
 
 4. **数据模型与序列化**（`src/mindmap/model.ts` 等）  
    解析/序列化各格式；与 `shared` 逻辑供桌面复用（`src/shared/mindmapCore.ts`）。
