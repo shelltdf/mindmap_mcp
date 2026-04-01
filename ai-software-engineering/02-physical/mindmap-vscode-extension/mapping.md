@@ -2,10 +2,10 @@
 
 | 模型/能力 | 路径 |
 |-----------|------|
-| 扩展激活、命令注册、AI 命令 | `mindmap_vscode/src/extension.ts` |
+| 扩展激活、命令注册、AI 命令；**`onWillSaveTextDocument` → `flushPendingWebviewEditsForDocument`**（脑图 `.mmd`/`.jm` 保存前合并画布） | `mindmap_vscode/src/extension.ts` |
 | MCP HTTP 桥、schema 文本 | `mindmap_vscode/src/bridge.ts` |
-| Webview 面板（HTML 壳模板、`asWebviewUri`、换树/MCP/消息）、MCP 持久化提示、格式/主题 Dock、视图平移与 ResizeObserver、`mindmap:requestToggleFullScreen` | `mindmap_vscode/src/panel.ts` |
-| Webview 主脚本（jsMind、画布、Dock 交互、`relayoutMindAfterVisuals` 等） | `mindmap_vscode/media/webview-app.js` |
+| Webview 面板（HTML 壳模板、`asWebviewUri`、换树/MCP/消息）、MCP 持久化提示、格式/主题 Dock、视图平移与 ResizeObserver、`mindmap:requestToggleFullScreen`；`documentIsMindmapBuffer`、`flushPendingWebviewEditsForDocument` / `flushAllPendingWebviewEditsToDocument` | `mindmap_vscode/src/panel.ts` |
+| Webview 主脚本（jsMind、画布、Dock 交互、`relayoutMindAfterVisuals`、`resetZoom`/`centerRoot`/`fitAll`/`zoomByStep` 等） | `mindmap_vscode/media/webview-app.js` |
 | Webview 主题早置（`data-mm-ui`） | `mindmap_vscode/media/webview-theme-init.js` |
 | 本地 HTTP 调试页热更新（轮询 `web_dev_meta.json`） | `mindmap_vscode/media/web-dev-livereload.js`（仅 `out/web_dev.html` 引用） |
 | 左侧基础 Dock（`#dockLeft`：`dock-edge` / `dock-display`） | `mindmap_vscode/src/panel.ts`（模板 HTML + 内联样式） |

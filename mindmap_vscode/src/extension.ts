@@ -78,6 +78,16 @@ export async function activate(context: vscode.ExtensionContext) {
     )
   );
 
+  /** 保存前先合并画布→TextDocument，避免防抖未完成时落盘旧内容，保存后又被同步改脏 */
+  context.subscriptions.push(
+    vscode.workspace.onWillSaveTextDocument((e) => {
+      if (!MindmapPanel.documentIsMindmapBuffer(e.document)) {
+        return;
+      }
+      e.waitUntil(MindmapPanel.flushPendingWebviewEditsForDocument(e.document.uri));
+    })
+  );
+
   let dockFocused = false;
   let bridgeDisposable: vscode.Disposable | undefined;
 

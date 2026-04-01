@@ -66,6 +66,11 @@
 
 当前实现目录提供 **`build.py` / `run.py` / `run_web.py` / `install.py`**，**未**提供根目录约定的独立 `test.py` / `publish.py`。若需对齐团队规范，可后续以薄封装脚本调用 `npm test`（如有）与 `vsce publish`。
 
+## CustomTextEditor 保存与画布同步
+
+- 实现：`extension.ts` 注册 **`workspace.onWillSaveTextDocument`**，对脑图文档调用 **`MindmapPanel.flushPendingWebviewEditsForDocument`**；静态辅助 **`documentIsMindmapBuffer`** 用于判断 `.mmd`/`.jm`。
+- 规格与行为说明见 **`02-physical/mindmap-vscode-extension/spec.md`**（「保存前合并画布→文档」、视图「还原」与 **`centerRoot`** 分工）。
+
 ## 诊断
 
 - 扩展命令 **`Mindmap: Diagnose MCP Setup`**：输出路径、`mcp.json`、入口文件是否存在等。

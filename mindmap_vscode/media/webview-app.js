@@ -353,7 +353,7 @@ if (el && el.textContent) {
             ctxDemoteNode: 'Demote',
             ctxCenterRoot: 'Center Root Node',
             ctxFitAll: 'Fit All',
-            ctxResetZoom: 'Reset Zoom',
+            ctxResetZoom: 'Reset zoom to 100% (viewport center; does not pan to root)',
             menuOpenLog: 'View Log',
             menuSupportedFormats: 'Supported formats…',
             helpSupportedFormatsTitle: 'Supported file formats',
@@ -367,7 +367,8 @@ if (el && el.textContent) {
             logCopyAll: 'Copy all',
             logClose: 'Close',
             statusbarLogHint: 'Click to view full log (plain text, copy supported)',
-            zoomDblClickReset: 'Double-click to reset to 100% and center (root in view)',
+            zoomDblClickReset:
+              'Double-click: reset zoom to 100% (anchored at viewport center; does not pan to root)',
             zoomOut: 'Zoom out',
             zoomIn: 'Zoom in',
             zoomBadgeFit: 'Fit',
@@ -518,7 +519,7 @@ if (el && el.textContent) {
             ctxDemoteNode: '下降',
             ctxCenterRoot: '根节点居正显示',
             ctxFitAll: '全部显示',
-            ctxResetZoom: '还原缩放比例',
+            ctxResetZoom: '还原为 100%（视口中心为锚，不平移至根节点）',
             menuOpenLog: '查看日志',
             menuSupportedFormats: '文件格式说明…',
             helpSupportedFormatsTitle: '支持的文件格式',
@@ -532,7 +533,7 @@ if (el && el.textContent) {
             logCopyAll: '复制全部',
             logClose: '关闭',
             statusbarLogHint: '点击查看完整日志（纯文本，可复制）',
-            zoomDblClickReset: '双击中间数字：还原为 100% 并以视图中心对齐根节点',
+            zoomDblClickReset: '双击百分比：缩放还原为 100%（以当前视口中心为锚点，不平移整图对齐根节点）',
             zoomOut: '缩小',
             zoomIn: '放大',
             zoomBadgeFit: '适应',
@@ -3406,12 +3407,22 @@ if (el && el.textContent) {
           });
         }
 
+        /** 与滚轮缩放一致：仅把比例拉回 100%，以当前视口中心为锚点，不把画面平移到根节点（对齐根请用「根节点」）。 */
         function resetZoom() {
-          zoomScale = 1;
-          panX = 0;
-          panY = 0;
+          if (!canvasWrapEl) return;
+          const oldScale = zoomScale;
+          const newScale = 1;
+          if (Math.abs(oldScale - newScale) < 1e-6) {
+            return;
+          }
+          const rect = canvasWrapEl.getBoundingClientRect();
+          const px = rect.width / 2;
+          const py = rect.height / 2;
+          panX = px - ((px - panX) / oldScale) * newScale;
+          panY = py - ((py - panY) / oldScale) * newScale;
+          zoomScale = newScale;
           applyViewTransform();
-          centerRoot();
+          syncCanvasWrapResizeAnchor();
         }
 
         function centerRoot() {
@@ -4588,6 +4599,12 @@ if (el && el.textContent) {
           if (msg.type === 'mindmap:forceClean') {
             setContentClean();
             vscode.postMessage({ type: 'mindmap:forceCleanAck' });
+            return;
+          }
+          if (msg.type === 'mindmap:appendHostLog') {
+            var lv =
+              msg.level === 'warn' ? 'warn' : msg.level === 'error' ? 'error' : 'info';
+            appendLog(lv, String(msg.text || ''));
             return;
           }
           if (msg.type === 'mindmap:showMcpPersistNotice') {

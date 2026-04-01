@@ -14,6 +14,15 @@
 1. **激活**（`extension.ts` `activate`）：注册 CustomEditor、命令、MCP 桥、AI 命令、状态栏；`MindmapPanel.setExtensionContext`。
 2. **MCP 读/写前**：`batch_get` / `batch_design` 调用 `panel.autoSaveForMcpBridgeIfNeeded()`，失败则桥返回 `ok: false`；必要时 `showMcpPersistNoticeIfNeeded()`。
 3. **停用 / 关闭**：`deactivate` 与 `onWillShutdown` 路径刷新挂起编辑、持久化脏状态（见实现）。
+4. **保存前合并画布→文档（`.mmd` / `.jm`）**：宿主注册 **`workspace.onWillSaveTextDocument`**；当即将保存的文档为脑图缓冲区时，**先** `await MindmapPanel.flushPendingWebviewEditsForDocument(document.uri)`（清空 Webview→`TextDocument` 的约 220ms 防抖队列并立即 `_syncDocumentFromWebview`），**再**由工作台写盘。避免「防抖未完成即 Ctrl+S → 落盘旧缓冲 → 随后同步 `applyEdit` → 标签仍显示脏」的竞态。
+
+## 磁盘被外部修改（`FileSystemWatcher` + `mtime`）
+
+- 检测到磁盘新于 `_lastKnownDiskMtime`（且不在写入后短抑制窗口）时：**不**使用 `showWarningMessage` 模态框。
+- **`TextDocument` 干净**（无未保存）：读取磁盘文本，与当前缓冲区比对后写 **Log**（路径、行数/字符、首行差异预览），再 **`_reloadTreeFromDisk`**；若文本相同则仅写 Log、刷新基准。
+- **脏文档**：写 **Log**（含 diff 摘要与说明），**不**自动重载，刷新 `_lastKnownDiskMtime`，避免同一外部变更反复触发。
+- **`.xmind`**：无文本 diff；干净则自动重载并写 Log，脏则跳过并写 Log。
+- 宿主通过 **`mindmap:appendHostLog`** 将条目推入 Webview 与状态栏 **Log** 同源列表。
 
 ## 错误语义（桥接）
 
@@ -51,6 +60,9 @@
 ## 视图平移与缩放（外层 `panX`/`panY`/`zoomScale` + `applyViewTransform`）
 
 - **画布客户区尺寸变化**：对 `#canvasWrap` 使用 **`ResizeObserver`**。若记录的上一次宽高与本次不同，则 **`panX += Δw/2`、`panY += Δh/2`**（缩放不变），使变化前后**视口中心**所对准的画布内容保持一致（全屏切换、窗口拉伸、侧栏变化等）。
+- **滚轮 / `zoomByStep`**：以**当前视口中心**为锚调整 `zoomScale` 与 `pan`（与 `ResizeObserver` 补偿同一几何约定）。
+- **「还原」缩放（`resetZoom`）**：左下角 **还原** 按钮、**双击缩放百分比**、画布右键 **还原缩放比例** 均调用 `resetZoom()`：将 **`zoomScale` 置为 `1`**，并以**当前视口中心**为锚按与 `zoomByStep` 相同的公式修正 `pan`，使中心下所见内容保持稳定；**不**调用 **`centerRoot()`**，即不会为对齐根节点而整图平移。若需将根节点移到视口中心，使用 **「根节点」**（`centerRoot()`）。
+- **`fitAll` / `centerRoot`**：**适应**整图入窗；**根节点**将根主题元素置于客户区中心并重算 `pan`（与「还原」语义分离）。
 - **锚点同步**：在 **`centerRoot`**、**`fitAll`** 等按当前客户区**重算** `pan` 的程序路径末尾调用 **`syncCanvasWrapResizeAnchor()`**，将观测锚点尺寸与当前 `getBoundingClientRect()` 对齐，避免与程序居中逻辑重复补偿。`init` 重置视图状态时 **`lastCanvasWrapObservedSize`** 归零。
 
 ## 格式 Dock、图标 Dock、脑图主题 Dock（右缘条 `panel.ts`）

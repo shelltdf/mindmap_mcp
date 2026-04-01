@@ -15,6 +15,8 @@
 
 - 外层对 `#jsmind_container` 使用 `translate(panX, panY) scale(zoom)`（`applyViewTransform`）。
 - **客户区-only 尺寸变化**（非缩放）：`ResizeObserver` 监听 `#canvasWrap`，按 **Δw/2、Δh/2** 修正 `pan`，保持**视口中心**下所见内容稳定；`centerRoot` / `fitAll` 等重算 pan 后同步「锚点」尺寸，避免双计。
+- **滚轮 / 步进缩放**：以视口中心为锚（`zoomByStep`）。
+- **还原缩放（`resetZoom`）**：仅将比例拉回 100%，以**当前视口中心**为锚调整 `pan`（与步进缩放同一几何），**不**整图平移去对齐根节点；对齐根节点由 **`centerRoot`**（UI「根节点」）承担。
 
 ## 右 Dock：格式 / 图标 / 脑图主题
 
@@ -50,7 +52,7 @@
 
 ## 脏状态与关闭
 
-- CustomTextEditor：依赖工作台 `TextDocument` 脏标记与保存。
+- CustomTextEditor：依赖工作台 `TextDocument` 脏标记与保存；画布改动经 `mindmap:edited` **防抖**写入文档，扩展在 **`onWillSaveTextDocument`** 中对当前 `.mmd`/`.jm` **先 flush** 再写盘，与 `deactivate`/`onWillShutdown` 中的全量 flush 一致，避免保存竞态导致「已保存仍脏」。
 - 纯 Webview / xmind：标题 `·`、状态栏提示；快捷键关闭路径下扩展拦截保存对话框策略见 `extension.ts` / `panel.ts` 与 README。
 
 ## Dock 最大化

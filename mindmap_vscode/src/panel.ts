@@ -89,6 +89,11 @@ export class MindmapPanel {
     return key.endsWith('.mmd') || key.endsWith('.jm');
   }
 
+  /** 供扩展在保存前等场景判断是否为脑图 TextDocument（.mmd / .jm） */
+  public static documentIsMindmapBuffer(doc: vscode.TextDocument): boolean {
+    return MindmapPanel._isMindmapTextDocumentBuffer(doc);
+  }
+
   /**
    * 仍有脏标记、但已无 MindmapPanel 绑定的脑图文档（关 Cursor 时常先 dispose 面板，再跑 deactivate）。
    */
@@ -596,7 +601,7 @@ export class MindmapPanel {
     }
     this._externalChangeDebounceTimer = setTimeout(() => {
       this._externalChangeDebounceTimer = undefined;
-      void this._checkExternalDiskChangedAndPrompt();
+      void this._checkExternalDiskChangedAutoReload();
     }, 450);
   }
 
@@ -636,7 +641,45 @@ export class MindmapPanel {
     this._suppressExternalChangeCheckUntil = Date.now() + 2500;
   }
 
-  private async _checkExternalDiskChangedAndPrompt(): Promise<void> {
+  /** 宿主侧写入 Webview Log（状态栏 Log 窗口同源），不抢焦点。 */
+  private _appendHostLogToWebview(level: 'info' | 'warn' | 'error', text: string): void {
+    try {
+      void this._panel.webview.postMessage({ type: 'mindmap:appendHostLog', level, text });
+    } catch {
+      // ignore
+    }
+  }
+
+  private _summarizeExternalTextDiff(oldText: string, newText: string): string {
+    const zh = this._uiLanguage === 'zh';
+    if (oldText === newText) {
+      return zh
+        ? '磁盘文本与当前缓冲区一致（可能仅有时间戳等非内容变化）。'
+        : 'Disk text matches editor buffer (timestamp-only change?).';
+    }
+    const oldLines = oldText.split(/\r?\n/);
+    const newLines = newText.split(/\r?\n/);
+    let i = 0;
+    const minLen = Math.min(oldLines.length, newLines.length);
+    while (i < minLen && oldLines[i] === newLines[i]) {
+      i++;
+    }
+    let detail = zh
+      ? `行数 ${oldLines.length}→${newLines.length}，字符 ${oldText.length}→${newText.length}。`
+      : `Lines ${oldLines.length}→${newLines.length}, chars ${oldText.length}→${newText.length}.`;
+    if (i < oldLines.length || i < newLines.length) {
+      detail += zh ? `\n首处内容差异约在第 ${i + 1} 行：` : `\nFirst content difference around line ${i + 1}:`;
+      detail += `\n  − ${(oldLines[i] ?? '').slice(0, 200)}`;
+      detail += `\n  + ${(newLines[i] ?? '').slice(0, 200)}`;
+    }
+    return detail;
+  }
+
+  /**
+   * 磁盘文件被外部修改：默认自动从磁盘重载到画布（无模态框），摘要写入 Log。
+   * 若当前有未保存修改，不自动覆盖，仅写 Log 警告并刷新已知 mtime，避免反复提示。
+   */
+  private async _checkExternalDiskChangedAutoReload(): Promise<void> {
     if (this._externalChangePromptLock || !this._filePath || !this._ext) {
       return;
     }
@@ -659,21 +702,73 @@ export class MindmapPanel {
 
     this._externalChangePromptLock = true;
     try {
-      this.focus();
       const zh = this._uiLanguage === 'zh';
-      const msg = this._dirty
-        ? zh
-          ? '磁盘上的脑图文件已被其他程序修改，但当前编辑器中有未保存的更改。若从磁盘重新加载，未保存的修改将丢失。'
-          : 'The mindmap file changed on disk, but you have unsaved edits. Reloading will discard local changes.'
-        : zh
-          ? '磁盘上的脑图文件已被其他程序修改，是否从磁盘重新加载？'
-          : 'The mindmap file was modified on disk. Reload from disk?';
-      const reloadLabel = zh ? '重新加载' : 'Reload';
-      const keepLabel = zh ? '保留编辑器' : 'Keep editor';
-      const picked = await vscode.window.showWarningMessage(msg, { modal: true }, reloadLabel, keepLabel);
-      if (picked === reloadLabel) {
-        await this._reloadTreeFromDisk();
+      const baseHead = zh
+        ? `[外部修改] 检测到磁盘文件已被其他程序更新：\n${this._filePath}`
+        : `[External] Mindmap file changed on disk:\n${this._filePath}`;
+
+      if (this._ext === 'xmind') {
+        if (this._dirty) {
+          this._appendHostLogToWebview(
+            'warn',
+            baseHead +
+              (zh
+                ? '\n当前有未保存修改，已跳过自动重新加载。'
+                : '\nUnsaved edits — skipped auto-reload.')
+          );
+        } else {
+          this._appendHostLogToWebview(
+            'info',
+            baseHead + (zh ? '\n已自动从磁盘重新加载（.xmind）。' : '\nAuto-reloaded from disk (.xmind).')
+          );
+          await this._reloadTreeFromDisk();
+        }
+        await this._refreshKnownDiskMtimeFromDisk();
+        return;
       }
+
+      let newText = '';
+      try {
+        newText = (await vscode.workspace.fs.readFile(vscode.Uri.file(this._filePath))).toString();
+      } catch (e) {
+        const msgStr = e instanceof Error ? e.message : String(e);
+        this._appendHostLogToWebview(
+          'error',
+          zh ? `读取磁盘文件失败：${msgStr}` : `Failed to read file: ${msgStr}`
+        );
+        await this._refreshKnownDiskMtimeFromDisk();
+        return;
+      }
+
+      const oldText = this._textDocument?.getText() ?? '';
+      const diffSummary = this._summarizeExternalTextDiff(oldText, newText);
+
+      if (this._dirty) {
+        this._appendHostLogToWebview('warn', `${baseHead}\n${diffSummary}`);
+        this._appendHostLogToWebview(
+          'warn',
+          zh
+            ? '当前编辑器中有未保存修改，已跳过自动从磁盘加载，避免覆盖本地编辑。可先保存或撤销后再同步。'
+            : 'Unsaved edits in editor — skipped auto-reload. Save or revert, then disk changes can apply.'
+        );
+        await this._refreshKnownDiskMtimeFromDisk();
+        return;
+      }
+
+      if (oldText === newText) {
+        this._appendHostLogToWebview(
+          'info',
+          `${baseHead}\n${diffSummary}\n` + (zh ? '未执行重载（内容一致）。' : 'No reload (content identical).')
+        );
+        await this._refreshKnownDiskMtimeFromDisk();
+        return;
+      }
+
+      this._appendHostLogToWebview(
+        'info',
+        `${baseHead}\n${diffSummary}\n` + (zh ? '已自动从磁盘重新加载。' : 'Auto-reloaded from disk.')
+      );
+      await this._reloadTreeFromDisk();
       await this._refreshKnownDiskMtimeFromDisk();
     } finally {
       this._externalChangePromptLock = false;
@@ -1137,6 +1232,19 @@ export class MindmapPanel {
    */
   public static async flushAllPendingWebviewEditsToDocument(): Promise<void> {
     await Promise.all([...MindmapPanel._instances].map((p) => p._flushPendingWebviewEditsToDocumentNow()));
+  }
+
+  /**
+   * 在即将保存某一文档前，只刷新绑定该 URI 的面板上的防抖队列（避免 Ctrl+S 与 220ms 画布→文档同步竞态）。
+   */
+  public static async flushPendingWebviewEditsForDocument(uri: vscode.Uri): Promise<void> {
+    const key = uri.toString();
+    for (const p of MindmapPanel._instances) {
+      if (p._textDocument?.uri.toString() === key) {
+        await p._flushPendingWebviewEditsToDocumentNow();
+        return;
+      }
+    }
   }
 
   private async _flushPendingWebviewEditsToDocumentNow(): Promise<void> {
