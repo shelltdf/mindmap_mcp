@@ -80,7 +80,7 @@
 
   function newTree() {
     return {
-      root: { id: 'r_' + Math.random().toString(16).slice(2, 18), topic: 'New Mindmap', children: [] }
+      root: { id: 'root', topic: 'New Mindmap', children: [] }
     };
   }
 

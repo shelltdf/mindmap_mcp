@@ -11,6 +11,23 @@
     };
   }
 
+  function normalizeCoreMindmapTreeIds(tree) {
+    var seq = 1;
+    function walk(node, isRoot) {
+      if (isRoot) {
+        node.id = 'root';
+      } else {
+        node.id = 'n_' + seq;
+        seq++;
+      }
+      var children = node.children || [];
+      for (var i = 0; i < children.length; i++) {
+        walk(children[i], false);
+      }
+    }
+    walk(tree.root, true);
+  }
+
   function extractMermaidBlock(text) {
     var m = text.match(/```mermaid\s*([\s\S]*?)```/i);
     if (m && m[1]) return m[1].trimEnd();
@@ -89,7 +106,9 @@
           }
           return o;
         }
-        return { root: toNode(obj.root) };
+        var out = { root: toNode(obj.root) };
+        normalizeCoreMindmapTreeIds(out);
+        return out;
       }
       var data = obj && obj.data;
       if (!data) throw new Error('Unsupported .jm JSON: missing "data" field');
@@ -106,9 +125,13 @@
         }
         return o;
       }
-      return { root: toNodeData(data) };
+      var out2 = { root: toNodeData(data) };
+      normalizeCoreMindmapTreeIds(out2);
+      return out2;
     }
-    return parseMermaidMindmap(text);
+    var mer = parseMermaidMindmap(text);
+    normalizeCoreMindmapTreeIds(mer);
+    return mer;
   }
 
   function serializeCoreMindmapTree(tree, ext) {
@@ -155,6 +178,7 @@
 
   global.MindmapCore = {
     parseCoreMindmapText: parseCoreMindmapText,
-    serializeCoreMindmapTree: serializeCoreMindmapTree
+    serializeCoreMindmapTree: serializeCoreMindmapTree,
+    normalizeCoreMindmapTreeIds: normalizeCoreMindmapTreeIds
   };
 })(typeof self !== 'undefined' ? self : this);

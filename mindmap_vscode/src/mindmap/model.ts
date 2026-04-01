@@ -1,6 +1,7 @@
 export type MindmapExt = 'mmd' | 'xmind' | 'jm';
 import {
   createBlankCoreMindmapTree,
+  normalizeCoreMindmapTreeIds,
   parseCoreMindmapText,
   serializeCoreMindmapTree
 } from '../shared/mindmapCore';
@@ -17,7 +18,7 @@ export interface MindmapTree {
   root: MindmapTreeNode;
 }
 
-/** 新建脑图：仅根节点、无子节点，根 id 每次重新生成。 */
+/** 新建脑图：仅根节点、无子节点；根 id 固定为 root（与 mindmapCore 一致）。 */
 export function createBlankMindmapTree(): MindmapTree {
   return createBlankCoreMindmapTree();
 }
@@ -105,7 +106,9 @@ function parseMermaidMindmap(text: string): MindmapTree {
     stack.push({ node, depth });
   }
 
-  return { root };
+  const tree: MindmapTree = { root };
+  normalizeCoreMindmapTreeIds(tree as import('../shared/mindmapCore').CoreMindmapTree);
+  return tree;
 }
 
 export function parseMindmapText(text: string, ext: string): MindmapTree {

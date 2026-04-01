@@ -12,15 +12,35 @@ export interface CoreMindmapTree {
 
 export type CoreMindmapExt = 'mmd' | 'jm';
 
-/** 新建 / 重置用：空子树 + 新根 id（避免与上一份脑图的根节点实例混用）。 */
+/** 新建 / 重置用：根 id 固定为 `root`，其余节点在载入时由 normalize 分配 `n_1`… */
 export function createBlankCoreMindmapTree(): CoreMindmapTree {
   return {
     root: {
-      id: 'r_' + Math.random().toString(16).slice(2, 18),
+      id: 'root',
       topic: 'New Mindmap',
       children: []
     }
   };
+}
+
+/**
+ * 将树内 id 规范为：根唯一 `root`，其余按前序遍历依次为 `n_1`、`n_2`、…（与画布规则一致）。
+ */
+export function normalizeCoreMindmapTreeIds(tree: CoreMindmapTree): void {
+  let seq = 1;
+  function walk(node: CoreMindmapTreeNode, isRoot: boolean): void {
+    if (isRoot) {
+      node.id = 'root';
+    } else {
+      node.id = 'n_' + seq;
+      seq++;
+    }
+    const children = node.children || [];
+    for (let i = 0; i < children.length; i++) {
+      walk(children[i], false);
+    }
+  }
+  walk(tree.root, true);
 }
 
 function nextIdFactory() {
@@ -107,7 +127,9 @@ export function parseCoreMindmapText(text: string, ext: CoreMindmapExt): CoreMin
         }
         return o;
       };
-      return { root: toNode(obj.root) };
+      const out: CoreMindmapTree = { root: toNode(obj.root) };
+      normalizeCoreMindmapTreeIds(out);
+      return out;
     }
     const data = obj?.data;
     if (!data) throw new Error('Unsupported .jm JSON: missing "data" field');
@@ -122,9 +144,13 @@ export function parseCoreMindmapText(text: string, ext: CoreMindmapExt): CoreMin
       }
       return o;
     };
-    return { root: toNode(data) };
+    const out2: CoreMindmapTree = { root: toNode(data) };
+    normalizeCoreMindmapTreeIds(out2);
+    return out2;
   }
-  return parseMermaidMindmap(text);
+  const mer = parseMermaidMindmap(text);
+  normalizeCoreMindmapTreeIds(mer);
+  return mer;
 }
 
 export function serializeCoreMindmapTree(tree: CoreMindmapTree, ext: CoreMindmapExt): string {

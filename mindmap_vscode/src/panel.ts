@@ -900,6 +900,11 @@ export class MindmapPanel {
       return;
     }
 
+    if (msg.type === 'mindmap:requestToggleFullScreen') {
+      await this._safeExec('workbench.action.toggleFullScreen');
+      return;
+    }
+
     if (msg.type === 'mindmap:requestNew') {
       this._filePath = undefined;
       await this.setTree(createBlankMindmapTree(), 'mmd');
@@ -1661,8 +1666,27 @@ export class MindmapPanel {
 <html lang="zh">
   <head>
     <meta charset="UTF-8" />
-    <!-- 与 --mm-bg-app 一致：整页重载时，在外联 CSS 与下方 :root 生效前避免首帧默认白底闪烁 -->
-    <style>html{background-color:#f1f5f9}</style>
+    <!-- 与 --mm-bg-app 一致；具体明暗由下方脚本尽早设置 data-mm-ui -->
+    <style>
+      html {
+        background-color: #f1f5f9;
+      }
+      html[data-mm-ui='dark'] {
+        background-color: #0f172a;
+      }
+    </style>
+    <script nonce="${nonce}">
+      (function () {
+        try {
+          var m = localStorage.getItem('mindmapUiThemeMode') || 'system';
+          var dark = false;
+          if (m === 'dark') dark = true;
+          else if (m === 'light') dark = false;
+          else dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+          document.documentElement.setAttribute('data-mm-ui', dark ? 'dark' : 'light');
+        } catch (e) {}
+      })();
+    </script>
     <meta
       http-equiv="Content-Security-Policy"
       content="default-src 'none'; img-src ${cspSource} https: data:; style-src 'unsafe-inline' ${cspSource}; script-src 'nonce-${nonce}' ${cspSource}; connect-src ${cspSource} https:; font-src ${cspSource} https: data:; "
@@ -1696,6 +1720,9 @@ export class MindmapPanel {
         --mm-font-caption: 0.6875rem;
         --mm-font-small: 0.75rem;
         --mm-font-ui: 0.8125rem;
+        /* 主菜单条：与 Windows 经典菜单栏对齐（Segoe UI + 12px） */
+        --mm-font-menu-windows: 'Segoe UI', 'Segoe UI Variable', 'Segoe UI Symbol', SegoeUI, system-ui, sans-serif;
+        --mm-font-menu-size: 12px;
         --mm-font-body: 0.875rem;
         --mm-font-title: 1.0625rem;
         --mm-line-tight: 1.25;
@@ -1704,6 +1731,74 @@ export class MindmapPanel {
         --mm-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
         --mm-shadow-md: 0 4px 14px rgba(15, 23, 42, 0.07);
         --mm-shadow-dialog: 0 12px 36px rgba(15, 23, 42, 0.12);
+      }
+      html[data-mm-ui='dark'] {
+        color-scheme: dark;
+        --mm-text: #e2e8f0;
+        --mm-text-secondary: #cbd5e1;
+        --mm-text-muted: #94a3b8;
+        --mm-border: #334155;
+        --mm-border-strong: #475569;
+        --mm-bg-app: #0f172a;
+        --mm-bg-surface: #1e293b;
+        --mm-bg-subtle: #334155;
+        --mm-bg-toolbar: #1e293b;
+        --mm-bg-dock: #1e293b;
+        --mm-bg-dock-edge: #334155;
+        --mm-bg-canvas: #0f172a;
+        --mm-shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        --mm-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.25);
+        --mm-shadow-md: 0 4px 14px rgba(0, 0, 0, 0.35);
+        --mm-shadow-dialog: 0 12px 36px rgba(0, 0, 0, 0.45);
+      }
+      html[data-mm-ui='dark'] .appTitleBar {
+        background: linear-gradient(180deg, var(--mm-bg-subtle) 0%, #1e293b 55%, var(--mm-bg-toolbar) 100%);
+      }
+      html[data-mm-ui='dark'] .appTitleIconWrap {
+        background: linear-gradient(145deg, #334155 0%, #1e293b 100%);
+        box-shadow:
+          0 1px 2px rgba(0, 0, 0, 0.35),
+          0 4px 12px rgba(37, 99, 235, 0.12);
+      }
+      html[data-mm-ui='dark'] .appTitleName {
+        background: linear-gradient(105deg, #93c5fd 0%, #60a5fa 45%, #a5b4fc 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      @supports not (background-clip: text) {
+        html[data-mm-ui='dark'] .appTitleName {
+          color: #93c5fd;
+          background: none;
+          -webkit-text-fill-color: unset;
+        }
+      }
+      html[data-mm-ui='dark'] .dock-titlebar {
+        background: linear-gradient(180deg, #334155 0%, #1e293b 100%);
+      }
+      html[data-mm-ui='dark'] .canvas-zoom-action-btn {
+        border-color: rgba(255, 255, 255, 0.12);
+        background: rgba(30, 41, 59, 0.88);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+      }
+      html[data-mm-ui='dark'] .canvas-zoom-action-btn:hover {
+        background: rgba(51, 65, 85, 0.95);
+      }
+      html[data-mm-ui='dark'] .canvas-zoom-badge {
+        background: rgba(30, 41, 59, 0.75);
+        border-color: rgba(255, 255, 255, 0.1);
+      }
+      html[data-mm-ui='dark'] .canvas-zoom-badge:hover {
+        background: rgba(51, 65, 85, 0.88);
+      }
+      html[data-mm-ui='dark'] .canvas-zoom-btn {
+        background: rgba(255, 255, 255, 0.08);
+      }
+      html[data-mm-ui='dark'] .canvas-zoom-btn:hover {
+        background: rgba(255, 255, 255, 0.14);
+      }
+      html[data-mm-ui='dark'] .statusbar.error {
+        color: #fca5a5;
       }
       body {
         margin: 0;
@@ -1725,6 +1820,7 @@ export class MindmapPanel {
         display: flex;
         flex-direction: row;
         align-items: center;
+        justify-content: space-between;
         gap: var(--mm-space-3);
         padding: var(--mm-space-3) var(--mm-space-4);
         background: linear-gradient(180deg, var(--mm-bg-subtle) 0%, #eef2f7 55%, var(--mm-bg-toolbar) 100%);
@@ -1737,6 +1833,7 @@ export class MindmapPanel {
         align-items: center;
         gap: var(--mm-space-3);
         min-width: 0;
+        flex: 1 1 auto;
       }
       .appTitleIconWrap {
         flex: 0 0 auto;
@@ -1798,6 +1895,36 @@ export class MindmapPanel {
         text-transform: uppercase;
         color: var(--mm-text-muted);
       }
+      .appTitleBarActions {
+        flex: 0 0 auto;
+        display: flex;
+        align-items: center;
+        gap: var(--mm-space-2);
+        margin-left: var(--mm-space-2);
+      }
+      .appTitleBarFullScreenBtn {
+        box-sizing: border-box;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        padding: 0;
+        border-radius: var(--mm-radius-md);
+        border: 1px solid var(--mm-border-strong);
+        background: var(--mm-bg-surface);
+        color: var(--mm-text-secondary);
+        cursor: pointer;
+        box-shadow: var(--mm-shadow-sm);
+      }
+      .appTitleBarFullScreenBtn:hover {
+        background: var(--mm-bg-subtle);
+        color: var(--mm-text);
+      }
+      .appTitleBarFullScreenBtn svg {
+        display: block;
+        flex: 0 0 auto;
+      }
       .mainRow {
         flex: 1 1 auto;
         display: flex;
@@ -1811,14 +1938,17 @@ export class MindmapPanel {
         display: flex;
         align-items: center;
         gap: var(--mm-space-3);
-        padding: var(--mm-space-2) var(--mm-space-3);
+        padding: 3px var(--mm-space-3);
         border-bottom: 1px solid var(--mm-border);
         background: var(--mm-bg-surface);
         overflow: visible;
         position: relative;
         z-index: 30;
         color: var(--mm-text);
-        font-size: var(--mm-font-ui);
+        font-family: var(--mm-font-menu-windows);
+        font-size: var(--mm-font-menu-size);
+        font-weight: 400;
+        -webkit-font-smoothing: antialiased;
       }
       .menubar details {
         position: relative;
@@ -1827,11 +1957,13 @@ export class MindmapPanel {
         list-style: none;
         cursor: pointer;
         user-select: none;
-        padding: var(--mm-space-1) var(--mm-space-2);
-        margin: calc(-1 * var(--mm-space-1)) calc(-1 * var(--mm-space-2));
+        padding: 3px var(--mm-space-2);
+        margin: calc(-1 * 3px) calc(-1 * var(--mm-space-2));
         border-radius: var(--mm-radius-sm);
-        font-weight: 600;
-        color: var(--mm-text-secondary);
+        font-family: var(--mm-font-menu-windows);
+        font-size: var(--mm-font-menu-size);
+        font-weight: 400;
+        color: var(--mm-text);
       }
       .menubar summary:hover {
         background: var(--mm-bg-subtle);
@@ -1859,12 +1991,13 @@ export class MindmapPanel {
         text-align: left;
         background: transparent;
         border: 0;
-        padding: var(--mm-space-2) var(--mm-space-3);
+        padding: 5px var(--mm-space-3);
         border-radius: var(--mm-radius-md);
         cursor: pointer;
         color: var(--mm-text);
-        font-size: var(--mm-font-ui);
-        font-weight: 500;
+        font-family: var(--mm-font-menu-windows);
+        font-size: var(--mm-font-menu-size);
+        font-weight: 400;
       }
       .menuItems button:hover { background: var(--mm-bg-subtle); }
       .menuItems button:disabled {
@@ -1907,30 +2040,38 @@ export class MindmapPanel {
       }
 
       .dock-edge {
-        flex: 0 0 24px;
-        width: 24px;
-        min-width: 24px;
+        flex: 0 0 28px;
+        width: 28px;
+        min-width: 28px;
         display: flex;
         flex-direction: column;
         align-items: center;
-        padding: var(--mm-space-2) var(--mm-space-1);
+        /* 不设左右 padding，避免缘条内有效宽度过小导致 emoji 溢出 */
+        padding: var(--mm-space-2) 0;
         box-sizing: border-box;
         border-right: none;
         border-left: 1px solid var(--mm-border-strong);
         background: var(--mm-bg-dock-edge);
       }
       .dock-edge-btn {
+        box-sizing: border-box;
         width: 100%;
-        min-height: 36px;
-        padding: var(--mm-space-1) 0;
+        max-width: 100%;
+        min-width: 0;
+        min-height: 34px;
+        padding: 4px 2px;
         border-radius: var(--mm-radius-md);
         border: 1px solid var(--mm-border-strong);
         background: var(--mm-bg-subtle);
         cursor: pointer;
         font-weight: 700;
-        font-size: var(--mm-font-body);
-        line-height: 1.1;
+        font-size: 0.8125rem;
+        line-height: 1;
         flex: 0 0 auto;
+        overflow: hidden;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
       }
 
       /* Keep a 16:9-ish canvas on the right side. */
@@ -2246,6 +2387,32 @@ export class MindmapPanel {
         border-radius: var(--mm-radius-sm);
         cursor: pointer;
       }
+      .dock-form-row input[type='text'].dock-readonly-input {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        padding: var(--mm-space-1) var(--mm-space-2);
+        border-radius: var(--mm-radius-sm);
+        border: 1px solid var(--mm-border-strong);
+        font-size: var(--mm-font-ui);
+        font-family: var(--mm-font-mono);
+        background: var(--mm-bg-subtle);
+        color: var(--mm-text-secondary);
+        cursor: default;
+      }
+      .dock-form-row textarea.dock-topic-input {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        min-height: 72px;
+        padding: var(--mm-space-1) var(--mm-space-2);
+        border-radius: var(--mm-radius-sm);
+        border: 1px solid var(--mm-border-strong);
+        font-size: var(--mm-font-ui);
+        font-family: inherit;
+        line-height: var(--mm-line-normal);
+        resize: vertical;
+      }
       .dock-form-actions {
         display: flex;
         flex-wrap: wrap;
@@ -2310,6 +2477,85 @@ export class MindmapPanel {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+      }
+      .dock-jsmind-theme-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--mm-space-2);
+      }
+      .dock-jsmind-theme-btn {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 4px;
+        min-height: 0;
+        padding: 6px;
+        border-radius: var(--mm-radius-md);
+        border: 1px solid var(--mm-border-strong);
+        background: var(--mm-bg-subtle);
+        cursor: pointer;
+        text-align: center;
+      }
+      .dock-jsmind-theme-btn:hover {
+        background: var(--mm-bg-toolbar);
+      }
+      .dock-jsmind-theme-preview-wrap {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 34px;
+        pointer-events: none;
+      }
+      /* jsmind.css 里 jmnodes/jmnode 为 position:absolute，在 Dock 预览中会脱离按钮布局；此处恢复为流内布局 */
+      .dock-jsmind-theme-preview-wrap jmnodes {
+        position: relative !important;
+        z-index: auto;
+        inset: auto !important;
+        display: inline-block;
+      }
+      .dock-jsmind-theme-jmnodes {
+        display: inline-block;
+      }
+      /* 缩略「节点」外观与 jsMind 主题一致（继承 jsmind.css 中 jmnodes.theme-* jmnode 配色） */
+      .dock-jsmind-theme-preview-wrap jmnode.dock-jsmind-theme-preview-node {
+        position: relative !important;
+        left: auto !important;
+        top: auto !important;
+        font-size: 12px !important;
+        line-height: 1.15 !important;
+        padding: 5px 10px !important;
+        margin: 0 !important;
+        display: inline-block;
+        min-width: 2.75em;
+        text-align: center;
+        box-sizing: border-box;
+      }
+      .dock-jsmind-theme-label {
+        font-size: var(--mm-font-caption);
+        font-weight: 600;
+        line-height: 1.2;
+        color: var(--mm-text-muted);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .dock-jsmind-theme-btn.mm-selected {
+        border-color: #2563eb;
+        background: #dbeafe;
+        box-shadow: 0 0 0 1px #2563eb inset;
+      }
+      .dock-jsmind-theme-btn.mm-selected .dock-jsmind-theme-label {
+        color: var(--mm-text);
+      }
+      html[data-mm-ui='dark'] .dock-jsmind-theme-btn.mm-selected {
+        background: rgba(37, 99, 235, 0.28);
+      }
+      html[data-mm-ui='dark'] .dock-jsmind-theme-btn.mm-selected .dock-jsmind-theme-label {
+        color: #e2e8f0;
+      }
+      .menuItems button.mm-menu-ui-theme-active {
+        background: var(--mm-bg-subtle);
+        box-shadow: inset 0 0 0 2px #2563eb;
       }
       jmnode.mm-icon-none::before,
       .jmnode.mm-icon-none::before {
@@ -2429,17 +2675,18 @@ export class MindmapPanel {
       /* Bottom status bar */
       .statusbar {
         flex: 0 0 auto;
-        padding: var(--mm-space-2) var(--mm-space-3);
+        padding: 2px var(--mm-space-3);
         border-top: 1px solid var(--mm-border);
         background: var(--mm-bg-subtle);
-        font-size: var(--mm-font-ui);
+        font-size: var(--mm-font-small);
+        line-height: 1.35;
         color: var(--mm-text-muted);
-        min-height: 30px;
+        min-height: 20px;
         height: auto;
         box-sizing: border-box;
         display: flex;
         align-items: center;
-        gap: var(--mm-space-2);
+        gap: 6px;
       }
       .statusbarLeft {
         display: inline-flex;
@@ -2456,8 +2703,8 @@ export class MindmapPanel {
         flex-shrink: 0;
       }
       .statusbarSaveLight {
-        width: 10px;
-        height: 10px;
+        width: 8px;
+        height: 8px;
         border-radius: 50%;
         flex: 0 0 auto;
         box-sizing: border-box;
@@ -2472,7 +2719,7 @@ export class MindmapPanel {
       .statusbarSaveLight.red {
         background: #ef4444;
       }
-      /* 画布左下角：上排 适应 / 根节点 / 还原，下排 − / 百分比 / +（同宽）；中间双击还原 100% 并居中根节点 */
+      /* 画布左下角：上排 适应 / 根节点 / 还原，下排 − / 百分比 / +；整体约 88% 缩放，兼顾可读与占地 */
       .canvas-zoom-stack {
         position: absolute;
         left: var(--mm-space-3);
@@ -2485,6 +2732,8 @@ export class MindmapPanel {
         gap: var(--mm-space-2);
         pointer-events: auto;
         user-select: none;
+        transform: scale(0.88);
+        transform-origin: left bottom;
       }
       .canvas-zoom-actions {
         display: flex;
@@ -2498,17 +2747,17 @@ export class MindmapPanel {
       .canvas-zoom-action-btn {
         flex: 1 1 0;
         min-width: 0;
-        padding: var(--mm-space-1) var(--mm-space-2);
+        padding: 6px var(--mm-space-2);
         margin: 0;
-        border: 1px solid rgba(15, 23, 42, 0.12);
+        border: 1px solid rgba(15, 23, 42, 0.08);
         border-radius: var(--mm-radius-sm);
-        background: rgba(255, 255, 255, 0.88);
+        background: rgba(255, 255, 255, 0.42);
         color: var(--mm-text);
-        font-size: var(--mm-font-small);
+        font-size: var(--mm-font-ui);
         font-weight: 600;
         line-height: var(--mm-line-tight);
         cursor: pointer;
-        box-shadow: var(--mm-shadow-sm);
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -2518,10 +2767,10 @@ export class MindmapPanel {
         box-sizing: border-box;
       }
       .canvas-zoom-action-btn:hover {
-        background: rgba(255, 255, 255, 0.92);
+        background: rgba(255, 255, 255, 0.55);
       }
       .canvas-zoom-action-btn:active {
-        background: rgba(0, 0, 0, 0.06);
+        background: rgba(0, 0, 0, 0.05);
       }
       .canvas-zoom-badge {
         display: flex;
@@ -2529,34 +2778,34 @@ export class MindmapPanel {
         align-items: center;
         justify-content: center;
         gap: var(--mm-space-1);
-        padding: var(--mm-space-1) var(--mm-space-2);
+        padding: 5px var(--mm-space-2);
         border-radius: var(--mm-radius-md);
-        font-size: var(--mm-font-ui);
+        font-size: var(--mm-font-body);
         font-weight: 600;
         line-height: var(--mm-line-tight);
         color: var(--mm-text);
-        background: rgba(255, 255, 255, 0.72);
-        border: 1px solid rgba(15, 23, 42, 0.1);
-        box-shadow: var(--mm-shadow-sm);
+        background: rgba(255, 255, 255, 0.38);
+        border: 1px solid rgba(15, 23, 42, 0.07);
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
         user-select: none;
         pointer-events: auto;
         width: 100%;
         box-sizing: border-box;
       }
       .canvas-zoom-badge:hover {
-        background: rgba(255, 255, 255, 0.75);
+        background: rgba(255, 255, 255, 0.48);
       }
       .canvas-zoom-btn {
         flex: 0 0 auto;
-        width: 26px;
-        height: 26px;
+        width: 30px;
+        height: 30px;
         padding: 0;
         margin: 0;
         border: none;
         border-radius: var(--mm-radius-sm);
-        background: rgba(15, 23, 42, 0.07);
+        background: rgba(15, 23, 42, 0.05);
         color: var(--mm-text);
-        font-size: 1rem;
+        font-size: 1.125rem;
         font-weight: 700;
         line-height: 1;
         cursor: pointer;
@@ -2565,21 +2814,21 @@ export class MindmapPanel {
         justify-content: center;
       }
       .canvas-zoom-btn:hover {
-        background: rgba(0, 0, 0, 0.12);
+        background: rgba(0, 0, 0, 0.08);
       }
       .canvas-zoom-btn:active {
-        background: rgba(0, 0, 0, 0.18);
+        background: rgba(0, 0, 0, 0.12);
       }
       .canvas-zoom-value {
         flex: 0 0 auto;
-        min-width: 40px;
+        min-width: 48px;
         text-align: center;
-        padding: 2px 4px;
+        padding: 3px 6px;
         cursor: default;
         border-radius: 4px;
       }
       .canvas-zoom-value:hover {
-        background: rgba(0, 0, 0, 0.06);
+        background: rgba(0, 0, 0, 0.04);
       }
       .statusIcon {
         display: inline-flex;
@@ -2776,6 +3025,22 @@ export class MindmapPanel {
           <span class="appTitleSub" id="appTitleSub">MindmapEditor</span>
         </div>
       </div>
+      <div class="appTitleBarActions">
+        <button
+          type="button"
+          id="btnTitleFullScreen"
+          class="appTitleBarFullScreenBtn"
+          title="Full screen"
+          aria-label="Full screen"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              fill="currentColor"
+              d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"
+            />
+          </svg>
+        </button>
+      </div>
     </header>
     <div class="menubar">
       <details>
@@ -2845,24 +3110,11 @@ export class MindmapPanel {
         </div>
       </details>
       <details>
-        <summary id="sumTheme">Theme</summary>
+        <summary id="sumUiTheme">Theme</summary>
         <div class="menuItems">
-          <button class="themeItem" data-theme="default">Default</button>
-          <button class="themeItem" data-theme="primary">Primary</button>
-          <button class="themeItem" data-theme="warning">Warning</button>
-          <button class="themeItem" data-theme="danger">Danger</button>
-          <button class="themeItem" data-theme="success">Success</button>
-          <button class="themeItem" data-theme="info">Info</button>
-          <button class="themeItem" data-theme="greensea">Greensea</button>
-          <button class="themeItem" data-theme="nephrite">Nephrite</button>
-          <button class="themeItem" data-theme="belizehole">Belizehole</button>
-          <button class="themeItem" data-theme="wisteria">Wisteria</button>
-          <button class="themeItem" data-theme="asphalt">Asphalt</button>
-          <button class="themeItem" data-theme="orange">Orange</button>
-          <button class="themeItem" data-theme="pumpkin">Pumpkin</button>
-          <button class="themeItem" data-theme="pomegranate">Pomegranate</button>
-          <button class="themeItem" data-theme="clouds">Clouds</button>
-          <button class="themeItem" data-theme="asbestos">Asbestos</button>
+          <button type="button" id="menuUiThemeSystem">Follow system</button>
+          <button type="button" id="menuUiThemeLight">Light</button>
+          <button type="button" id="menuUiThemeDark">Dark</button>
         </div>
       </details>
       <details>
@@ -2920,6 +3172,14 @@ export class MindmapPanel {
               <div class="dock-form" id="dockFormatForm">
                 <div class="dock-form-hint" id="dockFormatHint">—</div>
                 <label class="dock-form-row"
+                  ><span class="dock-form-label" id="dockLblNodeId">Node ID</span>
+                  <input type="text" id="dockInputNodeId" class="dock-readonly-input" readonly tabindex="-1" value=""
+                /></label>
+                <label class="dock-form-row"
+                  ><span class="dock-form-label" id="dockLblTopic">Content</span>
+                  <textarea id="dockInputTopic" class="dock-topic-input" rows="4" spellcheck="false"></textarea>
+                </label>
+                <label class="dock-form-row"
                   ><span class="dock-form-label" id="dockLblFont">Font</span>
                   <select id="dockInputFont"></select
                 ></label>
@@ -2936,7 +3196,6 @@ export class MindmapPanel {
                   <input type="color" id="dockInputBg" value="#ffffff" />
                 </label>
                 <div class="dock-form-actions">
-                  <button type="button" id="dockBtnApplyFormat" class="dock-apply-btn">Apply</button>
                   <button type="button" id="dockBtnResetFormat" class="dock-apply-btn dock-secondary">
                     Reset
                   </button>
@@ -2964,6 +3223,23 @@ export class MindmapPanel {
           </div>
           <div class="dock-edge">
             <button type="button" id="btnToggleDockIcon" class="dock-edge-btn" title="Icon">🖼</button>
+          </div>
+        </aside>
+        <aside class="dock dock-right" id="dockJsmindTheme" aria-label="Mind map theme dock">
+          <div class="dock-display">
+            <div class="dock-titlebar">
+              <span class="dock-title" id="dockJsmindThemeTitle">Mind map theme</span>
+              <div class="dock-title-actions">
+                <button type="button" class="dock-title-btn" id="btnDockJsmindThemeCollapse" title="Collapse">−</button>
+                <button type="button" class="dock-title-btn" id="btnDockJsmindThemeMaximize" title="Maximize">□</button>
+              </div>
+            </div>
+            <div class="attrContent" id="dockJsmindThemeBody">
+              <div class="dock-jsmind-theme-grid" id="dockJsmindThemeGrid"></div>
+            </div>
+          </div>
+          <div class="dock-edge">
+            <button type="button" id="btnToggleDockJsmindTheme" class="dock-edge-btn" title="Mind map theme">🎨</button>
           </div>
         </aside>
       </div>
@@ -3150,11 +3426,32 @@ export class MindmapPanel {
 
         /** @type {any} */
         let jm = null;
+
+        /** 分配下一个未占用的 n_数字 id（从 n_1 起递增找空位），根 id 固定为 root 不参与。 */
+        function allocateNextNodeId() {
+          const used = new Set();
+          if (jm && jm.mind && jm.mind.nodes) {
+            const map = jm.mind.nodes;
+            for (const key in map) {
+              if (!Object.prototype.hasOwnProperty.call(map, key)) continue;
+              const m = /^n_(\d+)$/.exec(String(key));
+              if (m) used.add(parseInt(m[1], 10));
+            }
+          }
+          let k = 1;
+          while (used.has(k)) {
+            k++;
+          }
+          return 'n_' + k;
+        }
+
         /** 最近一次 init / setTree 的树数据；jsMind 未就绪时保存/另存为仍可用（如降级视图）。 */
         let lastKnownMindmapTree = null;
         /** @type {any} */
         let selectedNode = null;
         let dockFormatIconInited = false;
+        /** 为 true 时表示正在从选中节点回填 Dock，忽略输入回调避免循环提交 */
+        let dockFormatRefreshing = false;
         let rootId = null;
         let currentLang = 'en';
         let currentTheme = 'primary';
@@ -3163,6 +3460,82 @@ export class MindmapPanel {
           'greensea', 'nephrite', 'belizehole', 'wisteria', 'asphalt',
           'orange', 'pumpkin', 'pomegranate', 'clouds', 'asbestos'
         ];
+        try {
+          const savedJt = localStorage.getItem('mindmapJsmindTheme');
+          if (savedJt && supportedThemes.indexOf(String(savedJt).toLowerCase()) >= 0) {
+            currentTheme = String(savedJt).toLowerCase();
+          }
+        } catch (e) {}
+
+        /** @type {'system'|'light'|'dark'} */
+        let uiThemeMode = 'system';
+        let uiThemeMediaQuery = null;
+
+        function getEffectiveUiTheme() {
+          if (uiThemeMode === 'light') return 'light';
+          if (uiThemeMode === 'dark') return 'dark';
+          try {
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+              return 'dark';
+            }
+          } catch (e) {}
+          return 'light';
+        }
+
+        function applyUiThemeMode(mode) {
+          const m = mode === 'light' || mode === 'dark' ? mode : 'system';
+          uiThemeMode = m;
+          try {
+            localStorage.setItem('mindmapUiThemeMode', m);
+          } catch (e) {}
+          const eff = getEffectiveUiTheme();
+          document.documentElement.setAttribute('data-mm-ui', eff);
+          updateUiThemeMenuHighlight();
+        }
+
+        function onUiThemeSystemPreferenceChange() {
+          if (uiThemeMode === 'system') {
+            applyUiThemeMode('system');
+          }
+        }
+
+        function bindUiThemeSystemListener() {
+          try {
+            if (uiThemeMediaQuery && uiThemeMediaQuery.removeEventListener) {
+              uiThemeMediaQuery.removeEventListener('change', onUiThemeSystemPreferenceChange);
+            }
+            uiThemeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+            if (uiThemeMediaQuery && uiThemeMediaQuery.addEventListener) {
+              uiThemeMediaQuery.addEventListener('change', onUiThemeSystemPreferenceChange);
+            }
+          } catch (e) {}
+        }
+
+        function updateUiThemeMenuHighlight() {
+          const ids = ['menuUiThemeSystem', 'menuUiThemeLight', 'menuUiThemeDark'];
+          for (let i = 0; i < ids.length; i++) {
+            const el = document.getElementById(ids[i]);
+            if (!el) continue;
+            el.classList.remove('mm-menu-ui-theme-active');
+          }
+          const activeId =
+            uiThemeMode === 'light'
+              ? 'menuUiThemeLight'
+              : uiThemeMode === 'dark'
+                ? 'menuUiThemeDark'
+                : 'menuUiThemeSystem';
+          const ael = document.getElementById(activeId);
+          if (ael) ael.classList.add('mm-menu-ui-theme-active');
+        }
+
+        try {
+          const um = localStorage.getItem('mindmapUiThemeMode');
+          if (um === 'light' || um === 'dark' || um === 'system') {
+            uiThemeMode = um;
+          }
+        } catch (e) {}
+        applyUiThemeMode(uiThemeMode);
+        bindUiThemeSystemListener();
 
         const statusbarEl = document.getElementById('statusbar');
         const statusbarTextEl = document.getElementById('statusbarText');
@@ -3289,16 +3662,19 @@ export class MindmapPanel {
             zoomControlsAria: 'Zoom controls',
             dockFormatEdge: 'Format dock — click to expand/collapse',
             dockIconEdge: 'Icon dock — click to expand/collapse',
+            dockJsmindThemeEdge: 'Mind map theme dock — click to expand/collapse',
             dockPanelFormat: 'Format',
             dockPanelIcon: 'Icon',
+            dockPanelJsmindTheme: 'Mind map theme',
             dockBtnCollapse: 'Collapse',
             dockBtnMaximize: 'Maximize',
             dockBtnRestore: 'Restore',
+            dockLblNodeId: 'Node ID',
+            dockLblTopic: 'Content',
             dockLblFont: 'Font',
             dockLblSize: 'Size',
             dockLblColor: 'Text color',
             dockLblBg: 'Background',
-            dockBtnApplyFormat: 'Apply',
             dockBtnResetFormat: 'Reset',
             dockHintNoSelection: 'Select a node to edit format.',
             dockHintIconNoSelection: 'Select a node to set icon.',
@@ -3317,13 +3693,17 @@ export class MindmapPanel {
             appTitlePrimary: 'Mindmap',
             appTitleSecondary: 'MindmapEditor',
             appTitleBannerAria: 'Mindmap Editor',
+            titleBarFullScreen: 'Full screen — toggle desktop window (VS Code)',
             defaultChildTopic: 'Subtopic',
             sumFile: 'File',
             sumEdit: 'Edit',
             sumView: 'View',
             sumInsert: 'Insert',
             sumModify: 'Modify',
-            sumTheme: 'Theme',
+            sumUiTheme: 'Theme',
+            menuUiThemeSystem: 'Follow system',
+            menuUiThemeLight: 'Light',
+            menuUiThemeDark: 'Dark',
             sumTools: 'Tools',
             sumWindow: 'Window',
             sumHelp: 'Help',
@@ -3424,16 +3804,19 @@ export class MindmapPanel {
             zoomControlsAria: '缩放控件',
             dockFormatEdge: '格式 Dock — 点击展开/折叠',
             dockIconEdge: '图标 Dock — 点击展开/折叠',
+            dockJsmindThemeEdge: '脑图主题 Dock — 点击展开/折叠',
             dockPanelFormat: '格式',
             dockPanelIcon: '图标',
+            dockPanelJsmindTheme: '脑图主题',
             dockBtnCollapse: '折叠',
             dockBtnMaximize: '最大化',
             dockBtnRestore: '还原',
+            dockLblNodeId: '节点 ID',
+            dockLblTopic: '内容',
             dockLblFont: '字体',
             dockLblSize: '字号',
             dockLblColor: '文字颜色',
             dockLblBg: '背景色',
-            dockBtnApplyFormat: '应用',
             dockBtnResetFormat: '重置',
             dockHintNoSelection: '请先选中节点再设置格式。',
             dockHintIconNoSelection: '请先选中节点再设置图标。',
@@ -3452,13 +3835,17 @@ export class MindmapPanel {
             appTitlePrimary: '脑图',
             appTitleSecondary: 'Mindmap 编辑器',
             appTitleBannerAria: '脑图编辑器',
+            titleBarFullScreen: '全屏 — 切换桌面窗口全屏（与 VS Code 一致）',
             defaultChildTopic: '子主题',
             sumFile: '文件',
             sumEdit: '编辑',
             sumView: '视图',
             sumInsert: '插入',
             sumModify: '修改',
-            sumTheme: '主题',
+            sumUiTheme: '主题',
+            menuUiThemeSystem: '跟随系统',
+            menuUiThemeLight: '浅色',
+            menuUiThemeDark: '深色',
             sumTools: '工具',
             sumWindow: '窗口',
             sumHelp: '帮助',
@@ -3565,26 +3952,43 @@ export class MindmapPanel {
 
         let formatDockCollapsed = false;
         let iconDockCollapsed = false;
+        let themeDockCollapsed = false;
         let formatDockMaximized = false;
         let iconDockMaximized = false;
+        let themeDockMaximized = false;
 
         function applyDockMaximizeUi() {
           const df = document.getElementById('dockFormat');
           const di = document.getElementById('dockIcon');
-          if (!df || !di) return;
+          const dt = document.getElementById('dockJsmindTheme');
+          if (!df || !di || !dt) return;
           const fc = formatDockCollapsed;
           const ic = iconDockCollapsed;
+          const tc = themeDockCollapsed;
           df.classList.toggle('dock-maximized', formatDockMaximized && !fc);
           di.classList.toggle('dock-maximized', iconDockMaximized && !ic);
-          df.classList.toggle('dock-peer-squash', iconDockMaximized && !ic && !fc);
-          di.classList.toggle('dock-peer-squash', formatDockMaximized && !fc && !ic);
+          dt.classList.toggle('dock-maximized', themeDockMaximized && !tc);
+          df.classList.toggle(
+            'dock-peer-squash',
+            (iconDockMaximized && !ic && !fc) || (themeDockMaximized && !tc && !fc)
+          );
+          di.classList.toggle(
+            'dock-peer-squash',
+            (formatDockMaximized && !fc && !ic) || (themeDockMaximized && !tc && !ic)
+          );
+          dt.classList.toggle(
+            'dock-peer-squash',
+            (formatDockMaximized && !fc && !tc) || (iconDockMaximized && !ic && !tc)
+          );
         }
 
         function updateDockMaximizeButtons() {
           const mf = document.getElementById('btnDockFormatMaximize');
           const mi = document.getElementById('btnDockIconMaximize');
+          const mt = document.getElementById('btnDockJsmindThemeMaximize');
           const bfc = document.getElementById('btnDockFormatCollapse');
           const bic = document.getElementById('btnDockIconCollapse');
+          const btc = document.getElementById('btnDockJsmindThemeCollapse');
           if (bfc) {
             bfc.title = t('dockBtnCollapse');
             bfc.setAttribute('aria-label', t('dockBtnCollapse'));
@@ -3592,6 +3996,10 @@ export class MindmapPanel {
           if (bic) {
             bic.title = t('dockBtnCollapse');
             bic.setAttribute('aria-label', t('dockBtnCollapse'));
+          }
+          if (btc) {
+            btc.title = t('dockBtnCollapse');
+            btc.setAttribute('aria-label', t('dockBtnCollapse'));
           }
           if (mf) {
             const r = formatDockMaximized;
@@ -3604,6 +4012,12 @@ export class MindmapPanel {
             mi.title = r ? t('dockBtnRestore') : t('dockBtnMaximize');
             mi.setAttribute('aria-label', mi.title);
             mi.textContent = r ? '❐' : '□';
+          }
+          if (mt) {
+            const r = themeDockMaximized;
+            mt.title = r ? t('dockBtnRestore') : t('dockBtnMaximize');
+            mt.setAttribute('aria-label', mt.title);
+            mt.textContent = r ? '❐' : '□';
           }
         }
 
@@ -3625,6 +4039,15 @@ export class MindmapPanel {
           updateDockMaximizeButtons();
         }
 
+        function applyThemeDockCollapsed(collapsed) {
+          themeDockCollapsed = collapsed;
+          const el = document.getElementById('dockJsmindTheme');
+          if (el) el.classList.toggle('collapsed', collapsed);
+          if (collapsed) themeDockMaximized = false;
+          applyDockMaximizeUi();
+          updateDockMaximizeButtons();
+        }
+
         function applyLanguage(lang) {
           currentLang = lang === 'zh' ? 'zh' : 'en';
           const byId = (id, text) => {
@@ -3636,7 +4059,10 @@ export class MindmapPanel {
           byId('sumView', t('sumView'));
           byId('sumInsert', t('sumInsert'));
           byId('sumModify', t('sumModify'));
-          byId('sumTheme', t('sumTheme'));
+          byId('sumUiTheme', t('sumUiTheme'));
+          byId('menuUiThemeSystem', t('menuUiThemeSystem'));
+          byId('menuUiThemeLight', t('menuUiThemeLight'));
+          byId('menuUiThemeDark', t('menuUiThemeDark'));
           byId('sumTools', t('sumTools'));
           byId('sumWindow', t('sumWindow'));
           byId('sumHelp', t('sumHelp'));
@@ -3731,6 +4157,11 @@ export class MindmapPanel {
           byId('appTitleSub', t('appTitleSecondary'));
           const appTitleBarEl = document.getElementById('appTitleBar');
           if (appTitleBarEl) appTitleBarEl.setAttribute('aria-label', t('appTitleBannerAria'));
+          const btnTitleFs = document.getElementById('btnTitleFullScreen');
+          if (btnTitleFs) {
+            btnTitleFs.title = t('titleBarFullScreen');
+            btnTitleFs.setAttribute('aria-label', t('titleBarFullScreen'));
+          }
           const appTitleIconImgEl = document.getElementById('appTitleIconImg');
           const appTitleIconWrapEl = document.getElementById('appTitleIconWrap');
           if (appTitleIconImgEl && appTitleIconWrapEl && !appTitleIconImgEl.dataset.fallbackBound) {
@@ -3741,20 +4172,24 @@ export class MindmapPanel {
           }
           const bdf = document.getElementById('btnToggleDockFormat');
           const bdi = document.getElementById('btnToggleDockIcon');
+          const bdt = document.getElementById('btnToggleDockJsmindTheme');
           if (bdf) bdf.title = t('dockFormatEdge');
           if (bdi) bdi.title = t('dockIconEdge');
+          if (bdt) bdt.title = t('dockJsmindThemeEdge');
           byId('dockFormatTitle', t('dockPanelFormat'));
           byId('dockIconTitle', t('dockPanelIcon'));
+          byId('dockJsmindThemeTitle', t('dockPanelJsmindTheme'));
+          byId('dockLblNodeId', t('dockLblNodeId'));
+          byId('dockLblTopic', t('dockLblTopic'));
           byId('dockLblFont', t('dockLblFont'));
           byId('dockLblSize', t('dockLblSize'));
           byId('dockLblColor', t('dockLblColor'));
           byId('dockLblBg', t('dockLblBg'));
-          const dockApply = document.getElementById('dockBtnApplyFormat');
           const dockReset = document.getElementById('dockBtnResetFormat');
-          if (dockApply) dockApply.textContent = t('dockBtnApplyFormat');
           if (dockReset) dockReset.textContent = t('dockBtnResetFormat');
           populateDockFontSelect();
           buildDockIconGrid();
+          buildDockJsmindThemeGrid();
           refreshDockFromSelection();
           applyHtoolbarLabels();
           updateDockMaximizeButtons();
@@ -3856,6 +4291,9 @@ export class MindmapPanel {
         const btnDockFormatMaximize = document.getElementById('btnDockFormatMaximize');
         const btnDockIconCollapse = document.getElementById('btnDockIconCollapse');
         const btnDockIconMaximize = document.getElementById('btnDockIconMaximize');
+        const btnToggleDockJsmindTheme = document.getElementById('btnToggleDockJsmindTheme');
+        const btnDockJsmindThemeCollapse = document.getElementById('btnDockJsmindThemeCollapse');
+        const btnDockJsmindThemeMaximize = document.getElementById('btnDockJsmindThemeMaximize');
 
         if (btnToggleDockFormat) {
           btnToggleDockFormat.addEventListener('click', function () {
@@ -3865,6 +4303,11 @@ export class MindmapPanel {
         if (btnToggleDockIcon) {
           btnToggleDockIcon.addEventListener('click', function () {
             applyIconDockCollapsed(!iconDockCollapsed);
+          });
+        }
+        if (btnToggleDockJsmindTheme) {
+          btnToggleDockJsmindTheme.addEventListener('click', function () {
+            applyThemeDockCollapsed(!themeDockCollapsed);
           });
         }
         if (btnDockFormatCollapse) {
@@ -3877,6 +4320,11 @@ export class MindmapPanel {
             applyIconDockCollapsed(true);
           });
         }
+        if (btnDockJsmindThemeCollapse) {
+          btnDockJsmindThemeCollapse.addEventListener('click', function () {
+            applyThemeDockCollapsed(true);
+          });
+        }
         if (btnDockFormatMaximize) {
           btnDockFormatMaximize.addEventListener('click', function () {
             if (formatDockMaximized) {
@@ -3884,6 +4332,7 @@ export class MindmapPanel {
             } else {
               formatDockMaximized = true;
               iconDockMaximized = false;
+              themeDockMaximized = false;
             }
             applyDockMaximizeUi();
             updateDockMaximizeButtons();
@@ -3896,6 +4345,20 @@ export class MindmapPanel {
             } else {
               iconDockMaximized = true;
               formatDockMaximized = false;
+              themeDockMaximized = false;
+            }
+            applyDockMaximizeUi();
+            updateDockMaximizeButtons();
+          });
+        }
+        if (btnDockJsmindThemeMaximize) {
+          btnDockJsmindThemeMaximize.addEventListener('click', function () {
+            if (themeDockMaximized) {
+              themeDockMaximized = false;
+            } else {
+              themeDockMaximized = true;
+              formatDockMaximized = false;
+              iconDockMaximized = false;
             }
             applyDockMaximizeUi();
             updateDockMaximizeButtons();
@@ -3905,6 +4368,7 @@ export class MindmapPanel {
         applyHtoolbarLabels();
         applyFormatDockCollapsed(true);
         applyIconDockCollapsed(true);
+        applyThemeDockCollapsed(true);
         if (errorDialogConfirmBtn) {
           errorDialogConfirmBtn.addEventListener('click', function () {
             if (pendingMcpNoticeRequestId) {
@@ -3919,7 +4383,7 @@ export class MindmapPanel {
         function createBlankBootTree() {
           return {
             root: {
-              id: 'r_' + Math.random().toString(16).slice(2, 18),
+              id: 'root',
               topic: 'New Mindmap',
               children: []
             }
@@ -4077,6 +4541,16 @@ export class MindmapPanel {
             zoomScale = 1;
             panX = 0;
             panY = 0;
+            try {
+              if (
+                tree &&
+                tree.root &&
+                window.MindmapCore &&
+                typeof window.MindmapCore.normalizeCoreMindmapTreeIds === 'function'
+              ) {
+                window.MindmapCore.normalizeCoreMindmapTreeIds(tree);
+              }
+            } catch (_) {}
             const mindData = makeMindData(tree);
             rootId = tree && tree.root ? tree.root.id : null;
             // 统一采用“xmind 风格”的菜单逻辑：仅标题编辑 + 视图操作。
@@ -4131,6 +4605,9 @@ export class MindmapPanel {
                   }
                   setSingleSelectStatus(selectedNode);
                   refreshDockFromSelection();
+                  requestAnimationFrame(function () {
+                    refreshDockFromSelection();
+                  });
                   return;
                 }
                 if (type === ET.show) {
@@ -4195,7 +4672,7 @@ export class MindmapPanel {
               return { id: 'root', topic: 'Root', children: [] };
             }
             const o = {
-              id: node.id || ('n_' + Math.random().toString(16).slice(2)),
+              id: node.id || allocateNextNodeId(),
               topic: String(node.topic != null ? node.topic : ''),
               children: (node.children || []).map(normalize)
             };
@@ -4423,6 +4900,162 @@ export class MindmapPanel {
           }
         }
 
+        function jsmindThemeLabel(name) {
+          const s = String(name || '');
+          if (!s.length) return s;
+          return s.charAt(0).toUpperCase() + s.slice(1);
+        }
+
+        function refreshJsmindThemeDockHighlight() {
+          const grid = document.getElementById('dockJsmindThemeGrid');
+          if (!grid) return;
+          const btns = grid.querySelectorAll('.dock-jsmind-theme-btn[data-mm-jsmind-theme]');
+          for (let i = 0; i < btns.length; i++) {
+            const b = btns[i];
+            const tn = b.getAttribute('data-mm-jsmind-theme') || '';
+            b.classList.toggle('mm-selected', tn === currentTheme);
+          }
+        }
+
+        function buildDockJsmindThemeGrid() {
+          const grid = document.getElementById('dockJsmindThemeGrid');
+          if (!grid) return;
+          grid.innerHTML = '';
+          for (let ti = 0; ti < supportedThemes.length; ti++) {
+            const themeName = supportedThemes[ti];
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'dock-jsmind-theme-btn';
+            btn.setAttribute('data-mm-jsmind-theme', themeName);
+            const labelText = jsmindThemeLabel(themeName);
+            btn.setAttribute('title', labelText);
+            btn.setAttribute('aria-label', labelText);
+
+            const wrap = document.createElement('span');
+            wrap.className = 'dock-jsmind-theme-preview-wrap';
+            const jmnodesEl = document.createElement('jmnodes');
+            jmnodesEl.className = 'dock-jsmind-theme-jmnodes';
+            if (themeName && themeName !== 'default') {
+              jmnodesEl.classList.add('theme-' + themeName);
+            }
+            const jmnodeEl = document.createElement('jmnode');
+            jmnodeEl.className = 'dock-jsmind-theme-preview-node';
+            jmnodeEl.textContent = 'Aa';
+            jmnodesEl.appendChild(jmnodeEl);
+            wrap.appendChild(jmnodesEl);
+
+            const lab = document.createElement('span');
+            lab.className = 'dock-jsmind-theme-label';
+            lab.textContent = labelText;
+
+            btn.appendChild(wrap);
+            btn.appendChild(lab);
+
+            (function (tn) {
+              btn.addEventListener('click', function () {
+                applyTheme(tn);
+              });
+            })(themeName);
+            grid.appendChild(btn);
+          }
+          refreshJsmindThemeDockHighlight();
+        }
+
+        /** 将 rgb/rgba/#rgb/#rrggbb 转为 #rrggbb，供 color 输入框使用；全透明 rgba 返回空串 */
+        function parseCssColorToHex(input) {
+          if (input == null || typeof input !== 'string') return '';
+          const s = String(input).trim();
+          if (/^#[0-9a-fA-F]{6}$/.test(s)) return s.toLowerCase();
+          if (/^#[0-9a-fA-F]{3}$/.test(s)) {
+            const r = s[1];
+            const g = s[2];
+            const b = s[3];
+            return ('#' + r + r + g + g + b + b).toLowerCase();
+          }
+          const m = s.match(
+            /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+)\s*)?\)/
+          );
+          if (m) {
+            const alpha = m[4] !== undefined && m[4] !== '' ? parseFloat(m[4]) : 1;
+            if (!isNaN(alpha) && alpha < 0.02) return '';
+            const r = parseInt(m[1], 10);
+            const g = parseInt(m[2], 10);
+            const b = parseInt(m[3], 10);
+            return (
+              '#' +
+              [r, g, b]
+                .map(function (x) {
+                  const v = Math.max(0, Math.min(255, x));
+                  const h = v.toString(16);
+                  return h.length === 1 ? '0' + h : h;
+                })
+                .join('')
+            );
+          }
+          return '';
+        }
+
+        function getMindNodeViewElement(node) {
+          return node && node._data && node._data.view && node._data.view.element
+            ? node._data.view.element
+            : null;
+        }
+
+        /**
+         * 格式 Dock 显示值：优先 node.data（mmFontSize/mmColor/mmBg），否则从画布 jmnode 的
+         * 计算样式读取（主题 CSS 下的默认色/字号在 data 中常为空，此前会导致控件不随选中更新）。
+         */
+        function snapshotDockFormatFromNode(node) {
+          const d = node && node.data && typeof node.data === 'object' ? node.data : {};
+          const el = getMindNodeViewElement(node);
+          let fontSizeStr = '';
+          if (d.mmFontSize != null && String(d.mmFontSize).trim() !== '') {
+            fontSizeStr = String(d.mmFontSize).trim();
+          } else if (el) {
+            const cs = window.getComputedStyle(el);
+            const fs = cs.fontSize;
+            if (fs && fs.indexOf('px') > 0) {
+              const n = parseFloat(fs);
+              if (!isNaN(n) && n > 0) fontSizeStr = String(Math.round(n));
+            }
+          }
+          let colorHex = '#333333';
+          if (d.mmColor != null && String(d.mmColor).trim() !== '') {
+            const h = parseCssColorToHex(String(d.mmColor).trim());
+            if (h) colorHex = h;
+            else if (el) {
+              const src = el.style && el.style.color ? el.style.color : window.getComputedStyle(el).color;
+              const h2 = parseCssColorToHex(src);
+              if (h2) colorHex = h2;
+            }
+          } else if (el) {
+            const src = el.style && el.style.color ? el.style.color : window.getComputedStyle(el).color;
+            const h = parseCssColorToHex(src);
+            if (h) colorHex = h;
+          }
+          let bgHex = '#ffffff';
+          if (d.mmBg != null && String(d.mmBg).trim() !== '') {
+            const h = parseCssColorToHex(String(d.mmBg).trim());
+            if (h) bgHex = h;
+            else if (el) {
+              const src =
+                el.style && el.style.backgroundColor
+                  ? el.style.backgroundColor
+                  : window.getComputedStyle(el).backgroundColor;
+              const h2 = parseCssColorToHex(src);
+              if (h2) bgHex = h2;
+            }
+          } else if (el) {
+            const src =
+              el.style && el.style.backgroundColor
+                ? el.style.backgroundColor
+                : window.getComputedStyle(el).backgroundColor;
+            const h = parseCssColorToHex(src);
+            if (h) bgHex = h;
+          }
+          return { fontSizeStr: fontSizeStr, colorHex: colorHex, bgHex: bgHex };
+        }
+
         function refreshDockFromSelection() {
           const node = getActiveSelectedNode();
           const form = document.getElementById('dockFormatForm');
@@ -4432,36 +5065,50 @@ export class MindmapPanel {
             form.classList.toggle('dock-disabled', !node);
           }
           if (hint) {
-            hint.textContent = node ? String(node.topic || node.id || '') : t('dockHintNoSelection');
+            hint.textContent = t('dockHintNoSelection');
+            hint.style.display = node ? 'none' : '';
           }
           if (ih) {
             ih.textContent = node ? String(node.topic || node.id || '') : t('dockHintIconNoSelection');
           }
           const d = node && node.data && typeof node.data === 'object' ? node.data : {};
-          const fontEl = document.getElementById('dockInputFont');
-          if (fontEl) {
-            const fv = d.mmFont != null ? String(d.mmFont) : '';
-            fontEl.value = fv;
-            if (fv && fontEl.value !== fv) {
-              const opt = document.createElement('option');
-              opt.value = fv;
-              opt.textContent = fv.length > 40 ? fv.slice(0, 38) + '…' : fv;
-              fontEl.appendChild(opt);
-              fontEl.value = fv;
+          dockFormatRefreshing = true;
+          try {
+            const idEl = document.getElementById('dockInputNodeId');
+            const topicEl = document.getElementById('dockInputTopic');
+            if (idEl) {
+              idEl.value = node ? String(node.id || '') : '';
             }
-          }
-          const sizeEl = document.getElementById('dockInputFontSize');
-          if (sizeEl) {
-            sizeEl.value =
-              d.mmFontSize != null && d.mmFontSize !== '' ? String(d.mmFontSize) : '';
-          }
-          const cEl = document.getElementById('dockInputColor');
-          if (cEl) {
-            cEl.value = d.mmColor ? String(d.mmColor) : '#333333';
-          }
-          const bgEl = document.getElementById('dockInputBg');
-          if (bgEl) {
-            bgEl.value = d.mmBg ? String(d.mmBg) : '#ffffff';
+            if (topicEl) {
+              topicEl.value = node ? String(node.topic != null ? node.topic : '') : '';
+            }
+            const fontEl = document.getElementById('dockInputFont');
+            if (fontEl) {
+              const fv = d.mmFont != null ? String(d.mmFont) : '';
+              fontEl.value = fv;
+              if (fv && fontEl.value !== fv) {
+                const opt = document.createElement('option');
+                opt.value = fv;
+                opt.textContent = fv.length > 40 ? fv.slice(0, 38) + '…' : fv;
+                fontEl.appendChild(opt);
+                fontEl.value = fv;
+              }
+            }
+            const snap = node ? snapshotDockFormatFromNode(node) : null;
+            const sizeEl = document.getElementById('dockInputFontSize');
+            if (sizeEl) {
+              sizeEl.value = snap ? snap.fontSizeStr : '';
+            }
+            const cEl = document.getElementById('dockInputColor');
+            if (cEl) {
+              cEl.value = snap ? snap.colorHex : '#333333';
+            }
+            const bgEl = document.getElementById('dockInputBg');
+            if (bgEl) {
+              bgEl.value = snap ? snap.bgHex : '#ffffff';
+            }
+          } finally {
+            dockFormatRefreshing = false;
           }
           const grid = document.getElementById('dockIconGrid');
           if (grid) {
@@ -4477,7 +5124,27 @@ export class MindmapPanel {
           }
         }
 
+        function commitTopicFromDock() {
+          if (dockFormatRefreshing) return;
+          const node = getActiveSelectedNode();
+          if (!node || !jm) return;
+          const topicEl = document.getElementById('dockInputTopic');
+          if (!topicEl) return;
+          const topic = String(topicEl.value != null ? topicEl.value : '');
+          try {
+            jm.update_node(node.id, topic);
+          } catch (_) {
+            return;
+          }
+          markContentDirty();
+          const ih = document.getElementById('dockIconHint');
+          if (ih && node) {
+            ih.textContent = String(node.topic != null ? node.topic : node.id || '');
+          }
+        }
+
         function commitFormatDock() {
+          if (dockFormatRefreshing) return;
           const node = getActiveSelectedNode();
           if (!node || !jm) return;
           if (!node.data || typeof node.data !== 'object') {
@@ -4517,7 +5184,6 @@ export class MindmapPanel {
             applyMindNodeVisual(node);
           });
           markContentDirty();
-          refreshDockFromSelection();
         }
 
         function resetFormatDock() {
@@ -4573,13 +5239,61 @@ export class MindmapPanel {
           dockFormatIconInited = true;
           populateDockFontSelect();
           buildDockIconGrid();
-          const applyBtn = document.getElementById('dockBtnApplyFormat');
-          const resetBtn = document.getElementById('dockBtnResetFormat');
-          if (applyBtn) {
-            applyBtn.addEventListener('click', function () {
+          const topicEl = document.getElementById('dockInputTopic');
+          if (topicEl) {
+            topicEl.addEventListener('input', function () {
+              commitTopicFromDock();
+            });
+            topicEl.addEventListener('paste', function (e) {
+              const text = e.clipboardData ? e.clipboardData.getData('text/plain') || '' : '';
+              if (!parseMindClipboardText(text)) {
+                return;
+              }
+              e.preventDefault();
+              e.stopPropagation();
+              const parent = getActiveSelectedNode() || (jm && jm.get_root ? jm.get_root() : null);
+              if (!parent) {
+                return;
+              }
+              if (!tryPasteMindFromText(text, parent)) {
+                notifyInvalidAction(t('alertPasteFailed'));
+              }
+            });
+          }
+          const fontEl = document.getElementById('dockInputFont');
+          if (fontEl) {
+            fontEl.addEventListener('change', function () {
               commitFormatDock();
             });
           }
+          const sizeEl = document.getElementById('dockInputFontSize');
+          if (sizeEl) {
+            sizeEl.addEventListener('input', function () {
+              commitFormatDock();
+            });
+            sizeEl.addEventListener('change', function () {
+              commitFormatDock();
+            });
+          }
+          const cEl = document.getElementById('dockInputColor');
+          if (cEl) {
+            cEl.addEventListener('input', function () {
+              commitFormatDock();
+            });
+            cEl.addEventListener('change', function () {
+              commitFormatDock();
+            });
+          }
+          const bgEl = document.getElementById('dockInputBg');
+          if (bgEl) {
+            bgEl.addEventListener('input', function () {
+              commitFormatDock();
+            });
+            bgEl.addEventListener('change', function () {
+              commitFormatDock();
+            });
+          }
+          const resetBtn = document.getElementById('dockBtnResetFormat');
           if (resetBtn) {
             resetBtn.addEventListener('click', function () {
               resetFormatDock();
@@ -4587,6 +5301,7 @@ export class MindmapPanel {
           }
         }
 
+        /** 旧版剪贴板前缀（仍可从历史剪贴板解析）；新复制为纯 JSON，便于阅读且不会把标记误粘进节点文本 */
         const MIND_CLIP_MARKER = '##MINDMAP_SUBTREE##';
 
         function jmDirectionFromSerialized(dir) {
@@ -4634,32 +5349,60 @@ export class MindmapPanel {
 
         function buildMindClipboardPayload(node) {
           const root = serializeMindSubtreeNode(node);
-          return MIND_CLIP_MARKER + '\\n' + JSON.stringify({ root: root });
+          return JSON.stringify({ root: root }, null, 2);
         }
 
-        function parseMindClipboardText(text) {
-          const raw = (text || '').toString();
-          if (!raw.startsWith(MIND_CLIP_MARKER)) {
+        function parseMindClipboardPayloadObject(obj) {
+          if (!obj || typeof obj !== 'object') {
             return null;
           }
-          try {
-            const json = JSON.parse(raw.slice(MIND_CLIP_MARKER.length).trim());
-            if (json && json.root && json.root.topic !== undefined) {
-              return json.root;
-            }
-          } catch (_) {}
+          if (obj.root != null && typeof obj.root === 'object' && obj.root.topic !== undefined) {
+            return obj.root;
+          }
+          if (obj.topic !== undefined) {
+            return obj;
+          }
           return null;
         }
 
+        function parseMindClipboardText(text) {
+          const trimmed = (text || '').toString().trim();
+          if (!trimmed) {
+            return null;
+          }
+          if (trimmed.startsWith(MIND_CLIP_MARKER)) {
+            let rest = trimmed.slice(MIND_CLIP_MARKER.length);
+            if (rest.charAt(0) === '\n') {
+              rest = rest.slice(1);
+            } else if (rest.startsWith('\\n')) {
+              rest = rest.slice(2);
+            }
+            rest = rest.trim();
+            try {
+              const json = JSON.parse(rest);
+              return parseMindClipboardPayloadObject(json);
+            } catch (_) {
+              return null;
+            }
+          }
+          try {
+            const json = JSON.parse(trimmed);
+            return parseMindClipboardPayloadObject(json);
+          } catch (_) {
+            return null;
+          }
+        }
+
+        /** @returns {string|null} 本层新建节点 id；失败为 null */
         function pasteMindDataUnder(parentModelNode, data) {
           if (!jm || !parentModelNode || !data || data.topic === undefined) {
-            return false;
+            return null;
           }
-          const newId = 'n_' + Math.random().toString(16).slice(2);
+          const newId = allocateNextNodeId();
           const dir = jmDirectionFromSerialized(data.direction);
           const added = jm.add_node(parentModelNode, newId, String(data.topic || ''), data.data || null, dir);
           if (!added) {
-            return false;
+            return null;
           }
           if (data.expanded === false && typeof jm.collapse_node === 'function') {
             try {
@@ -4670,7 +5413,7 @@ export class MindmapPanel {
           for (let i = 0; i < kids.length; i++) {
             pasteMindDataUnder(added, kids[i]);
           }
-          return true;
+          return newId;
         }
 
         function writeMindClipboardFromNode(node) {
@@ -4721,11 +5464,14 @@ export class MindmapPanel {
           if (!jm || !parentModelNode) {
             return false;
           }
-          if (!pasteMindDataUnder(parentModelNode, rootData)) {
+          const pastedTopId = pasteMindDataUnder(parentModelNode, rootData);
+          if (!pastedTopId) {
             notifyInvalidAction(t('alertPasteFailed'));
             return true;
           }
           markContentDirty();
+          selectNodeById(pastedTopId);
+          ensureMindNodeInCanvasView(pastedTopId);
           setStatus(currentLang === 'zh' ? '已粘贴' : 'Pasted');
           return true;
         }
@@ -5394,6 +6140,7 @@ export class MindmapPanel {
             const r = jm.get_root && jm.get_root();
             if (r) {
               selectNodeById(r.id);
+              ensureMindNodeInCanvasView(String(r.id));
             }
             return;
           }
@@ -5410,6 +6157,7 @@ export class MindmapPanel {
                 : null;
           if (other) {
             selectNodeById(other.id);
+            ensureMindNodeInCanvasView(String(other.id));
           }
         }
 
@@ -5422,6 +6170,7 @@ export class MindmapPanel {
             const r = jm.get_root && jm.get_root();
             if (r) {
               selectNodeById(r.id);
+              ensureMindNodeInCanvasView(String(r.id));
             }
             return;
           }
@@ -5430,6 +6179,7 @@ export class MindmapPanel {
             return;
           }
           selectNodeById(p.id);
+          ensureMindNodeInCanvasView(String(p.id));
         }
 
         /** 方向键 →：选中第一个子节点；无子节点则不变化。 */
@@ -5450,6 +6200,7 @@ export class MindmapPanel {
           const first = kids[0];
           if (first && first.id != null) {
             selectNodeById(first.id);
+            ensureMindNodeInCanvasView(String(first.id));
           }
         }
 
@@ -5461,10 +6212,11 @@ export class MindmapPanel {
             return;
           }
           const topic = 'New Node';
-          const newId = 'n_' + Math.random().toString(16).slice(2);
+          const newId = allocateNextNodeId();
           jm.add_node(node, newId, topic, null);
           markContentDirty();
           selectNodeById(newId);
+          ensureMindNodeInCanvasView(newId);
         }
 
         function addSibling() {
@@ -5483,10 +6235,11 @@ export class MindmapPanel {
             notifyInvalidAction(t('alertNoParentSibling'));
             return;
           }
-          const newId = 'n_' + Math.random().toString(16).slice(2);
+          const newId = allocateNextNodeId();
           jm.add_node(parentNode, newId, 'New Node', null);
           markContentDirty();
           selectNodeById(newId);
+          ensureMindNodeInCanvasView(newId);
         }
 
         /** Alt+↑/↓：在同一父节点下调整兄弟顺序。 */
@@ -5503,6 +6256,7 @@ export class MindmapPanel {
             jm.move_node(node, prev.id, parent.id);
             markContentDirty();
             selectNodeById(node.id);
+            ensureMindNodeInCanvasView(String(node.id));
           } catch (_) {
             notifyInvalidAction(t('alertPromoteDemoteFailed'));
           }
@@ -5523,6 +6277,7 @@ export class MindmapPanel {
             jm.move_node(node, beforeSpec, parent.id);
             markContentDirty();
             selectNodeById(node.id);
+            ensureMindNodeInCanvasView(String(node.id));
           } catch (_) {
             notifyInvalidAction(t('alertPromoteDemoteFailed'));
           }
@@ -5541,7 +6296,7 @@ export class MindmapPanel {
           }
           const prefixKey = 'embedTopicPrefix_' + kind;
           const prefix = t(prefixKey) || '[' + kind + ']';
-          const newId = 'n_' + Math.random().toString(16).slice(2);
+          const newId = allocateNextNodeId();
           const embed = { type: kind, v: 1 };
           let topic = prefix;
 
@@ -5585,6 +6340,7 @@ export class MindmapPanel {
           }
           markContentDirty();
           selectNodeById(newId);
+          ensureMindNodeInCanvasView(newId);
           requestAnimationFrame(function () {
             const n = findNodeById(newId);
             if (n) applyMindNodeVisual(n);
@@ -5647,6 +6403,7 @@ export class MindmapPanel {
               jm.select_node(node.id);
               selectedNode = jm.get_selected_node ? jm.get_selected_node() : node;
             } catch (_) {}
+            ensureMindNodeInCanvasView(String(node.id));
           } catch (_) {
             notifyInvalidAction(t('alertPromoteDemoteFailed'));
           }
@@ -5678,6 +6435,7 @@ export class MindmapPanel {
               jm.select_node(node.id);
               selectedNode = jm.get_selected_node ? jm.get_selected_node() : node;
             } catch (_) {}
+            ensureMindNodeInCanvasView(String(node.id));
           } catch (_) {
             notifyInvalidAction(t('alertPromoteDemoteFailed'));
           }
@@ -5802,6 +6560,169 @@ export class MindmapPanel {
           panX = wrapRect.width / 2 - (minX + boundsW / 2) * zoomScale;
           panY = wrapRect.height / 2 - (minY + boundsH / 2) * zoomScale;
           applyViewTransform();
+        }
+
+        function getMindNodeTopicElement(mnode) {
+          return mnode && mnode._data && mnode._data.view && mnode._data.view.element
+            ? mnode._data.view.element
+            : null;
+        }
+
+        /**
+         * 选中节点及其邻域（若存在）：父、第一个子、上一个兄弟、下一个兄弟 — 用于视口计算。
+         */
+        function collectNeighborhoodTopicElements(nodeIdStr) {
+          const els = [];
+          if (!jm || !nodeIdStr) {
+            return els;
+          }
+          const node = findNodeById(nodeIdStr);
+          if (!node) {
+            return els;
+          }
+          const seen = new Set();
+          function pushEl(mn) {
+            const el = getMindNodeTopicElement(mn);
+            if (el && !seen.has(el)) {
+              seen.add(el);
+              els.push(el);
+            }
+          }
+          pushEl(node);
+          if (node.parent) {
+            pushEl(node.parent);
+          }
+          const kids = node.children;
+          if (kids && kids.length > 0) {
+            pushEl(kids[0]);
+          }
+          if (!(rootId && String(node.id) === String(rootId))) {
+            const prev = jm.find_node_before ? jm.find_node_before(node) : null;
+            const next = jm.find_node_after ? jm.find_node_after(node) : null;
+            if (prev) {
+              pushEl(prev);
+            }
+            if (next) {
+              pushEl(next);
+            }
+          }
+          return els;
+        }
+
+        function unionScreenRects(elements) {
+          let minL = Infinity;
+          let minT = Infinity;
+          let maxR = -Infinity;
+          let maxB = -Infinity;
+          for (let i = 0; i < elements.length; i++) {
+            const el = elements[i];
+            if (!el || !el.getBoundingClientRect) {
+              continue;
+            }
+            const r = el.getBoundingClientRect();
+            if (r.width <= 0 && r.height <= 0) {
+              continue;
+            }
+            minL = Math.min(minL, r.left);
+            minT = Math.min(minT, r.top);
+            maxR = Math.max(maxR, r.right);
+            maxB = Math.max(maxB, r.bottom);
+          }
+          if (minL === Infinity) {
+            return null;
+          }
+          return {
+            left: minL,
+            top: minT,
+            right: maxR,
+            bottom: maxB,
+            width: maxR - minL,
+            height: maxB - minT
+          };
+        }
+
+        /**
+         * 将选中节点及其邻域（父/一子/上下兄弟，若存在）纳入画布可视区：优先平移，不足时缩小 zoom。
+         * add_node / 方向键等之后布局可能尚未稳定，使用双 rAF；缩放后必要时再跑一帧平移。
+         */
+        function ensureMindNodeInCanvasView(nodeIdStr) {
+          if (!nodeIdStr || !canvasWrapEl) {
+            return;
+          }
+          function runEnsure(depth) {
+            if (depth > 12) {
+              return;
+            }
+            const elements = collectNeighborhoodTopicElements(nodeIdStr);
+            const union = unionScreenRects(elements);
+            if (!union) {
+              return;
+            }
+            const wrap = canvasWrapEl.getBoundingClientRect();
+            const margin = 28;
+            const availW = Math.max(8, wrap.width - 2 * margin);
+            const availH = Math.max(8, wrap.height - 2 * margin);
+            const uw = union.width;
+            const uh = union.height;
+
+            if (uw > availW || uh > availH) {
+              const factor = Math.min(availW / uw, availH / uh, 1) * 0.98;
+              if (factor < 0.999 && zoomScale > 0.3 + 1e-6) {
+                const oldScale = zoomScale;
+                const newScale = Math.max(0.3, zoomScale * factor);
+                const px = wrap.width / 2;
+                const py = wrap.height / 2;
+                panX = px - ((px - panX) / oldScale) * newScale;
+                panY = py - ((py - panY) / oldScale) * newScale;
+                zoomScale = newScale;
+                applyViewTransform();
+                requestAnimationFrame(function () {
+                  runEnsure(depth + 1);
+                });
+                return;
+              }
+            }
+
+            const els2 = collectNeighborhoodTopicElements(nodeIdStr);
+            const u2 = unionScreenRects(els2);
+            if (!u2) {
+              return;
+            }
+            const maxW = availW;
+            const maxH = availH;
+            let dx = 0;
+            let dy = 0;
+            if (u2.width <= maxW) {
+              if (u2.left < wrap.left + margin) {
+                dx = (wrap.left + margin) - u2.left;
+              }
+              if (u2.right > wrap.right - margin) {
+                dx += (wrap.right - margin) - u2.right;
+              }
+            } else {
+              dx = (wrap.left + wrap.right) / 2 - (u2.left + u2.right) / 2;
+            }
+            if (u2.height <= maxH) {
+              if (u2.top < wrap.top + margin) {
+                dy = (wrap.top + margin) - u2.top;
+              }
+              if (u2.bottom > wrap.bottom - margin) {
+                dy += (wrap.bottom - margin) - u2.bottom;
+              }
+            } else {
+              dy = (wrap.top + wrap.bottom) / 2 - (u2.top + u2.bottom) / 2;
+            }
+            if (dx !== 0 || dy !== 0) {
+              panX += dx;
+              panY += dy;
+              applyViewTransform();
+            }
+          }
+          requestAnimationFrame(function () {
+            requestAnimationFrame(function () {
+              runEnsure(0);
+            });
+          });
         }
 
         function applyTitle() {
@@ -5943,9 +6864,26 @@ export class MindmapPanel {
             if (!topic) throw new Error('add.topic is required');
             const parent = findNodeById(parentId);
             if (!parent) throw new Error('parent node not found: ' + parentId);
-            const newId = String(op.nodeId || ('n_' + Math.random().toString(16).slice(2)));
+            let newId;
+            const wantRaw = op.nodeId != null && String(op.nodeId).trim() !== '' ? String(op.nodeId).trim() : '';
+            if (wantRaw) {
+              if (wantRaw === 'root') {
+                throw new Error('add.nodeId cannot be root');
+              }
+              if (!/^n_\d+$/.test(wantRaw)) {
+                throw new Error('add.nodeId must match n_<positive integer>');
+              }
+              if (jm.mind && jm.mind.nodes && jm.mind.nodes[wantRaw]) {
+                throw new Error('add.nodeId already exists: ' + wantRaw);
+              }
+              newId = wantRaw;
+            } else {
+              newId = allocateNextNodeId();
+            }
             if (!dryRun) {
               jm.add_node(parent, newId, topic, null);
+              selectNodeById(newId);
+              ensureMindNodeInCanvasView(newId);
             }
             return { action, id: newId, parentId, topic, dryRun: !!dryRun };
           }
@@ -6065,11 +7003,12 @@ export class MindmapPanel {
           }
           const parent = getActiveSelectedNode() || (jm.get_root ? jm.get_root() : null);
           if (!parent) return;
-          const newId = 'n_' + Math.random().toString(16).slice(2);
+          const newId = allocateNextNodeId();
           const topic = t('defaultChildTopic');
           jm.add_node(parent, newId, topic, null);
           markContentDirty();
           selectNodeById(newId);
+          ensureMindNodeInCanvasView(newId);
           try {
             e.preventDefault();
             e.stopPropagation();
@@ -6333,9 +7272,11 @@ export class MindmapPanel {
           if (!topic) {
             return;
           }
-          const newId = 'n_' + Math.random().toString(16).slice(2);
+          const newId = allocateNextNodeId();
           jm.add_node(node, newId, topic, null);
           markContentDirty();
+          selectNodeById(newId);
+          ensureMindNodeInCanvasView(newId);
           e.preventDefault();
         });
 
@@ -6630,14 +7571,11 @@ export class MindmapPanel {
           }
           currentTheme = themeName;
           if (jm && jm.set_theme) jm.set_theme(currentTheme);
-          setStatus((currentLang === 'zh' ? '主题：' : 'Theme: ') + currentTheme);
-        }
-        const themeItems = document.querySelectorAll('.themeItem[data-theme]');
-        for (const btn of themeItems) {
-          btn.addEventListener('click', function () {
-            const themeName = btn.getAttribute('data-theme') || '';
-            applyTheme(themeName);
-          });
+          try {
+            localStorage.setItem('mindmapJsmindTheme', currentTheme);
+          } catch (e) {}
+          refreshJsmindThemeDockHighlight();
+          setStatus((currentLang === 'zh' ? '脑图主题：' : 'Mind map theme: ') + currentTheme);
         }
         bindByIdClick('menuLangZh', function () {
           applyLanguage('zh');
@@ -6647,8 +7585,20 @@ export class MindmapPanel {
           applyLanguage('en');
           vscode.postMessage({ type: 'mindmap:setUiLanguage', language: 'en' });
         });
+        bindByIdClick('menuUiThemeSystem', function () {
+          applyUiThemeMode('system');
+        });
+        bindByIdClick('menuUiThemeLight', function () {
+          applyUiThemeMode('light');
+        });
+        bindByIdClick('menuUiThemeDark', function () {
+          applyUiThemeMode('dark');
+        });
         bindByIdClick('menuToggleDock', function () {
           vscode.postMessage({ type: 'mindmap:requestToggleDock' });
+        });
+        bindByIdClick('btnTitleFullScreen', function () {
+          vscode.postMessage({ type: 'mindmap:requestToggleFullScreen' });
         });
         bindByIdClick('menuToggleDebugBounds', function () {
           setDebugBoundsEnabled(!debugBoundsEnabled);
@@ -7101,6 +8051,23 @@ export class MindmapPanel {
             }
             if (ty === 'mindmap:requestSaveAs') {
               void browserSaveTree(msg.tree, true);
+              return true;
+            }
+            if (ty === 'mindmap:requestToggleFullScreen') {
+              try {
+                var de = document.documentElement;
+                if (document.fullscreenElement) {
+                  void document.exitFullscreen();
+                } else if (de && de.requestFullscreen) {
+                  void de.requestFullscreen();
+                }
+              } catch (fsErr) {
+                notifyInvalidAction(
+                  currentLang === 'zh'
+                    ? '无法进入全屏（浏览器限制或未允许）。'
+                    : 'Cannot toggle fullscreen (blocked or not allowed).'
+                );
+              }
               return true;
             }
             return false;
