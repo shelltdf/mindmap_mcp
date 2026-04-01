@@ -79,7 +79,9 @@
   }
 
   function newTree() {
-    return { root: { id: 'root', topic: 'New Mindmap', children: [] } };
+    return {
+      root: { id: 'r_' + Math.random().toString(16).slice(2, 18), topic: 'New Mindmap', children: [] }
+    };
   }
 
   async function doOpen() {

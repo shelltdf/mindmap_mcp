@@ -4,6 +4,7 @@ import * as vscode from 'vscode';
 import {
   MindmapTree,
   MindmapExt,
+  createBlankMindmapTree,
   parseMindmapText,
   parseMindmapXmindFile,
   serializeMindmapTree,
@@ -138,9 +139,7 @@ export class MindmapPanel {
     if (doc.uri.scheme === 'untitled') {
       const lower = doc.fileName.toLowerCase();
       const ext: FileExt = lower.endsWith('.jm') ? 'jm' : 'mmd';
-      const tree: MindmapTree = {
-        root: { id: 'root', topic: 'New Mindmap', children: [] }
-      };
+      const tree = createBlankMindmapTree();
       const text = serializeMindmapTree(tree, ext);
       const edit = new vscode.WorkspaceEdit();
       edit.replace(doc.uri, range, text);
@@ -448,18 +447,14 @@ export class MindmapPanel {
     const text = this._textDocument!.getText();
     let tree: MindmapTree;
     if (!text.trim()) {
-      tree = {
-        root: { id: 'root', topic: 'New Mindmap', children: [] }
-      };
+      tree = createBlankMindmapTree();
     } else {
       try {
         tree = parseMindmapText(text, this._ext!);
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         await vscode.window.showErrorMessage(`脑图解析失败：${msg}`);
-        tree = {
-          root: { id: 'root', topic: 'New Mindmap', children: [] }
-        };
+        tree = createBlankMindmapTree();
       }
     }
     await this._loadTreeIntoWebview(tree, this._ext!);
@@ -906,16 +901,8 @@ export class MindmapPanel {
     }
 
     if (msg.type === 'mindmap:requestNew') {
-      const tree: MindmapTree = {
-        root: {
-          id: 'root',
-          topic: 'New Mindmap',
-          children: []
-        }
-      };
-
       this._filePath = undefined;
-      await this.setTree(tree, 'mmd');
+      await this.setTree(createBlankMindmapTree(), 'mmd');
       return;
     }
 
@@ -1674,6 +1661,8 @@ export class MindmapPanel {
 <html lang="zh">
   <head>
     <meta charset="UTF-8" />
+    <!-- 与 --mm-bg-app 一致：整页重载时，在外联 CSS 与下方 :root 生效前避免首帧默认白底闪烁 -->
+    <style>html{background-color:#f1f5f9}</style>
     <meta
       http-equiv="Content-Security-Policy"
       content="default-src 'none'; img-src ${cspSource} https: data:; style-src 'unsafe-inline' ${cspSource}; script-src 'nonce-${nonce}' ${cspSource}; connect-src ${cspSource} https:; font-src ${cspSource} https: data:; "
@@ -1681,14 +1670,54 @@ export class MindmapPanel {
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" type="text/css" href="${jsmindCssUrl}" />
     <style>
+      :root {
+        --mm-font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        --mm-font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        --mm-text: #0f172a;
+        --mm-text-secondary: #334155;
+        --mm-text-muted: #64748b;
+        --mm-border: #e2e8f0;
+        --mm-border-strong: #cbd5e1;
+        --mm-bg-app: #f1f5f9;
+        --mm-bg-surface: #ffffff;
+        --mm-bg-subtle: #f8fafc;
+        --mm-bg-toolbar: #e8edf4;
+        --mm-bg-dock: #dfe6f0;
+        --mm-bg-dock-edge: #cfd6e0;
+        --mm-bg-canvas: #e2e8f0;
+        --mm-space-1: 4px;
+        --mm-space-2: 8px;
+        --mm-space-3: 12px;
+        --mm-space-4: 16px;
+        --mm-space-5: 20px;
+        --mm-radius-sm: 6px;
+        --mm-radius-md: 8px;
+        --mm-radius-lg: 10px;
+        --mm-font-caption: 0.6875rem;
+        --mm-font-small: 0.75rem;
+        --mm-font-ui: 0.8125rem;
+        --mm-font-body: 0.875rem;
+        --mm-font-title: 1.0625rem;
+        --mm-line-tight: 1.25;
+        --mm-line-normal: 1.45;
+        --mm-shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+        --mm-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+        --mm-shadow-md: 0 4px 14px rgba(15, 23, 42, 0.07);
+        --mm-shadow-dialog: 0 12px 36px rgba(15, 23, 42, 0.12);
+      }
       body {
         margin: 0;
         padding: 0;
         height: 100vh;
         overflow: hidden;
-        font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;
+        font-family: var(--mm-font-sans);
+        font-size: var(--mm-font-body);
+        line-height: var(--mm-line-normal);
+        color: var(--mm-text);
+        -webkit-font-smoothing: antialiased;
         display: flex;
         flex-direction: column;
+        background: var(--mm-bg-app);
       }
       /* 顶栏：扩展图标 + 产品名（与菜单栏分离，便于识别应用） */
       .appTitleBar {
@@ -1696,24 +1725,24 @@ export class MindmapPanel {
         display: flex;
         flex-direction: row;
         align-items: center;
-        gap: 12px;
-        padding: 10px 16px;
-        background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 55%, #e8edf4 100%);
-        border-bottom: 1px solid #cbd5e1;
-        box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset;
+        gap: var(--mm-space-3);
+        padding: var(--mm-space-3) var(--mm-space-4);
+        background: linear-gradient(180deg, var(--mm-bg-subtle) 0%, #eef2f7 55%, var(--mm-bg-toolbar) 100%);
+        border-bottom: 1px solid var(--mm-border-strong);
+        box-shadow: var(--mm-shadow-inset);
         z-index: 31;
       }
       .appTitleBrand {
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: var(--mm-space-3);
         min-width: 0;
       }
       .appTitleIconWrap {
         flex: 0 0 auto;
         width: 40px;
         height: 40px;
-        border-radius: 10px;
+        border-radius: var(--mm-radius-lg);
         overflow: hidden;
         box-shadow:
           0 1px 2px rgba(15, 23, 42, 0.08),
@@ -1741,15 +1770,15 @@ export class MindmapPanel {
         flex-direction: column;
         align-items: flex-start;
         justify-content: center;
-        gap: 2px;
+        gap: var(--mm-space-1);
         min-width: 0;
       }
       .appTitleName {
-        font-size: 1.125rem;
+        font-size: var(--mm-font-title);
         font-weight: 750;
-        letter-spacing: -0.035em;
-        line-height: 1.2;
-        color: #0f172a;
+        letter-spacing: -0.03em;
+        line-height: var(--mm-line-tight);
+        color: var(--mm-text);
         background: linear-gradient(105deg, #0f172a 0%, #1d4ed8 45%, #6366f1 100%);
         -webkit-background-clip: text;
         background-clip: text;
@@ -1763,11 +1792,11 @@ export class MindmapPanel {
         }
       }
       .appTitleSub {
-        font-size: 0.6875rem;
+        font-size: var(--mm-font-caption);
         font-weight: 600;
-        letter-spacing: 0.06em;
+        letter-spacing: 0.05em;
         text-transform: uppercase;
-        color: #64748b;
+        color: var(--mm-text-muted);
       }
       .mainRow {
         flex: 1 1 auto;
@@ -1781,14 +1810,15 @@ export class MindmapPanel {
         flex: 0 0 auto;
         display: flex;
         align-items: center;
-        gap: 14px;
-        padding: 6px 10px;
-        border-bottom: 1px solid #e5e7eb;
-        background: white;
+        gap: var(--mm-space-3);
+        padding: var(--mm-space-2) var(--mm-space-3);
+        border-bottom: 1px solid var(--mm-border);
+        background: var(--mm-bg-surface);
         overflow: visible;
         position: relative;
         z-index: 30;
-        color: #000;
+        color: var(--mm-text);
+        font-size: var(--mm-font-ui);
       }
       .menubar details {
         position: relative;
@@ -1797,9 +1827,15 @@ export class MindmapPanel {
         list-style: none;
         cursor: pointer;
         user-select: none;
-        padding: 0;
+        padding: var(--mm-space-1) var(--mm-space-2);
+        margin: calc(-1 * var(--mm-space-1)) calc(-1 * var(--mm-space-2));
+        border-radius: var(--mm-radius-sm);
         font-weight: 600;
-        color: #000;
+        color: var(--mm-text-secondary);
+      }
+      .menubar summary:hover {
+        background: var(--mm-bg-subtle);
+        color: var(--mm-text);
       }
       .menubar summary::-webkit-details-marker { display: none; }
       .menuItems {
@@ -1807,15 +1843,15 @@ export class MindmapPanel {
         top: 100%;
         left: 0;
         z-index: 10;
-        min-width: 190px;
-        background: white;
-        border: 1px solid #e5e7eb;
-        border-radius: 10px;
-        padding: 8px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        min-width: 200px;
+        background: var(--mm-bg-surface);
+        border: 1px solid var(--mm-border);
+        border-radius: var(--mm-radius-lg);
+        padding: var(--mm-space-2);
+        box-shadow: var(--mm-shadow-md);
         display: flex;
         flex-direction: column;
-        gap: 4px;
+        gap: var(--mm-space-1);
       }
       .menubar details:not([open]) .menuItems { display: none; }
       .menuItems button {
@@ -1823,15 +1859,16 @@ export class MindmapPanel {
         text-align: left;
         background: transparent;
         border: 0;
-        padding: 6px 8px;
-        border-radius: 8px;
+        padding: var(--mm-space-2) var(--mm-space-3);
+        border-radius: var(--mm-radius-md);
         cursor: pointer;
-        color: #000;
+        color: var(--mm-text);
+        font-size: var(--mm-font-ui);
         font-weight: 500;
       }
-      .menuItems button:hover { background: #f3f4f6; }
+      .menuItems button:hover { background: var(--mm-bg-subtle); }
       .menuItems button:disabled {
-        color: #9ca3af;
+        color: var(--mm-text-muted);
         cursor: not-allowed;
       }
       /* 主菜单下方的横向工具栏（基础文件操作） */
@@ -1841,10 +1878,10 @@ export class MindmapPanel {
         flex-direction: row;
         flex-wrap: wrap;
         align-items: center;
-        gap: 8px;
-        padding: 8px 10px;
-        border-bottom: 1px solid #e5e7eb;
-        background: #dce1e8;
+        gap: var(--mm-space-2);
+        padding: var(--mm-space-2) var(--mm-space-3);
+        border-bottom: 1px solid var(--mm-border);
+        background: var(--mm-bg-toolbar);
       }
       .htoolbar button {
         box-sizing: border-box;
@@ -1852,44 +1889,46 @@ export class MindmapPanel {
         min-width: 36px;
         width: 36px;
         height: 36px;
-        border-radius: 8px;
-        border: 1px solid #d1d5db;
-        background: #ffffff;
+        border-radius: var(--mm-radius-md);
+        border: 1px solid var(--mm-border-strong);
+        background: var(--mm-bg-surface);
         cursor: pointer;
-        font-size: 18px;
+        font-size: 1.125rem;
         font-weight: 600;
         line-height: 1;
         display: inline-flex;
         align-items: center;
         justify-content: center;
+        box-shadow: var(--mm-shadow-sm);
       }
       .htoolbar button:hover {
-        background: #f9fafb;
+        background: var(--mm-bg-subtle);
+        border-color: var(--mm-border-strong);
       }
 
       .dock-edge {
-        flex: 0 0 22px;
-        width: 22px;
-        min-width: 22px;
+        flex: 0 0 24px;
+        width: 24px;
+        min-width: 24px;
         display: flex;
         flex-direction: column;
         align-items: center;
-        padding: 8px 2px;
+        padding: var(--mm-space-2) var(--mm-space-1);
         box-sizing: border-box;
         border-right: none;
-        border-left: 1px solid #c5cad3;
-        background: #cfd6e0;
+        border-left: 1px solid var(--mm-border-strong);
+        background: var(--mm-bg-dock-edge);
       }
       .dock-edge-btn {
         width: 100%;
         min-height: 36px;
-        padding: 4px 0;
-        border-radius: 8px;
-        border: 1px solid #d1d5db;
-        background: #f3f4f6;
+        padding: var(--mm-space-1) 0;
+        border-radius: var(--mm-radius-md);
+        border: 1px solid var(--mm-border-strong);
+        background: var(--mm-bg-subtle);
         cursor: pointer;
         font-weight: 700;
-        font-size: 14px;
+        font-size: var(--mm-font-body);
         line-height: 1.1;
         flex: 0 0 auto;
       }
@@ -1904,7 +1943,7 @@ export class MindmapPanel {
         display: flex;
         align-items: stretch;
         justify-content: stretch;
-        background-color: #e5e7eb;
+        background-color: var(--mm-bg-canvas);
         position: relative;
       }
       .gridLayer {
@@ -1912,7 +1951,7 @@ export class MindmapPanel {
         inset: 0;
         z-index: 0;
         pointer-events: none;
-        background-color: #e5e7eb;
+        background-color: var(--mm-bg-canvas);
         background-image:
           linear-gradient(rgba(90, 100, 120, 0.10) 1px, transparent 1px),
           linear-gradient(90deg, rgba(90, 100, 120, 0.10) 1px, transparent 1px);
@@ -1927,16 +1966,16 @@ export class MindmapPanel {
       .debugBounds.hidden { display: none; }
       .fallbackTree {
         position: absolute;
-        inset: 8px;
+        inset: var(--mm-space-3);
         z-index: 9;
         overflow: auto;
-        background: rgba(255, 255, 255, 0.92);
-        border: 1px solid #d1d5db;
-        border-radius: 8px;
-        padding: 8px 10px;
-        font-size: 13px;
-        line-height: 1.5;
-        color: #111827;
+        background: rgba(255, 255, 255, 0.94);
+        border: 1px solid var(--mm-border-strong);
+        border-radius: var(--mm-radius-md);
+        padding: var(--mm-space-3);
+        font-size: var(--mm-font-ui);
+        line-height: var(--mm-line-normal);
+        color: var(--mm-text);
       }
       .fallbackTree.hidden { display: none; }
       .rootMirror {
@@ -1945,13 +1984,13 @@ export class MindmapPanel {
         top: 50%;
         transform: translate(-50%, -50%);
         z-index: 10;
-        background: #ffffff;
-        color: #111827;
-        border: 1px solid #9ca3af;
-        border-radius: 8px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-        padding: 8px 12px;
-        font-size: 14px;
+        background: var(--mm-bg-surface);
+        color: var(--mm-text);
+        border: 1px solid var(--mm-border-strong);
+        border-radius: var(--mm-radius-md);
+        box-shadow: var(--mm-shadow-md);
+        padding: var(--mm-space-2) var(--mm-space-3);
+        font-size: var(--mm-font-body);
         font-weight: 600;
         max-width: min(70vw, 520px);
         white-space: nowrap;
@@ -2009,6 +2048,13 @@ export class MindmapPanel {
       #jsmind_container::-webkit-scrollbar { display: none; }
       #jsmind_container { scrollbar-width: none; -ms-overflow-style: none; }
 
+      /* 与壳层字体阶梯协调：脑图节点默认字号与行高 */
+      #jsmind_container jmnode,
+      #jsmind_container .jmnode {
+        font-size: var(--mm-font-body);
+        line-height: var(--mm-line-normal);
+      }
+
       /* 右侧 Dock 容器：纵向叠放多个 Dock；折叠时缘条在右侧上下排列 */
       .dock-right-stack {
         flex: 0 0 auto;
@@ -2022,7 +2068,8 @@ export class MindmapPanel {
         max-height: 100%;
         overflow-x: hidden;
         overflow-y: auto;
-        background: #dce1e8;
+        background: var(--mm-bg-dock);
+        border-left: 1px solid var(--mm-border);
       }
       /* 每个 Dock：[ 画布侧显示区 | 缘条 ]；展开时分摊纵向剩余高度 */
       .dock-right {
@@ -2032,7 +2079,7 @@ export class MindmapPanel {
         align-items: stretch;
         min-height: 0;
         min-width: 0;
-        background: #dce1e8;
+        background: var(--mm-bg-dock);
       }
       /* 折叠后整行只占缘条宽度，并靠栈的右侧（窗口右缘），避免缘条漂在列中间 */
       .dock-right-stack .dock-right.collapsed {
@@ -2053,15 +2100,15 @@ export class MindmapPanel {
         flex-direction: row;
         align-items: center;
         justify-content: space-between;
-        gap: 8px;
-        padding: 6px 8px;
-        background: linear-gradient(180deg, #e2e6ee 0%, #d5dbe6 100%);
-        border-bottom: 1px solid #b8c0ce;
+        gap: var(--mm-space-2);
+        padding: var(--mm-space-2) var(--mm-space-3);
+        background: linear-gradient(180deg, #e8ecf4 0%, #dce3ee 100%);
+        border-bottom: 1px solid var(--mm-border-strong);
         border-radius: 0;
-        font-size: 12px;
+        font-size: var(--mm-font-ui);
         font-weight: 700;
-        color: #1f2937;
-        min-height: 32px;
+        color: var(--mm-text-secondary);
+        min-height: 34px;
         box-sizing: border-box;
       }
       .dock-title {
@@ -2079,30 +2126,30 @@ export class MindmapPanel {
         gap: 4px;
       }
       .dock-title-btn {
-        width: 26px;
-        height: 24px;
+        width: 28px;
+        height: 26px;
         padding: 0;
         line-height: 1;
-        border-radius: 6px;
-        border: 1px solid #9ca3af;
-        background: #f3f4f6;
+        border-radius: var(--mm-radius-sm);
+        border: 1px solid var(--mm-border-strong);
+        background: var(--mm-bg-subtle);
         cursor: pointer;
-        font-size: 13px;
+        font-size: var(--mm-font-ui);
         font-weight: 700;
-        color: #374151;
+        color: var(--mm-text-secondary);
         display: inline-flex;
         align-items: center;
         justify-content: center;
       }
       .dock-title-btn:hover {
-        background: #e5e7eb;
+        background: var(--mm-bg-surface);
       }
       .dock-right .dock-display {
         flex: 0 0 auto;
-        width: 198px;
-        min-width: 198px;
+        width: 208px;
+        min-width: 208px;
         padding: 0;
-        border-left: 1px solid #e5e7eb;
+        border-left: 1px solid var(--mm-border);
         display: flex;
         flex-direction: column;
         gap: 0;
@@ -2117,7 +2164,7 @@ export class MindmapPanel {
         min-height: 0;
       }
       .dock-right .dock-display > .attrContent {
-        margin: 8px 10px 10px 10px;
+        margin: var(--mm-space-2) var(--mm-space-3) var(--mm-space-3) var(--mm-space-3);
       }
       .dock-right-stack .dock-right.dock-maximized:not(.collapsed) {
         flex: 1 1 auto !important;
@@ -2158,70 +2205,70 @@ export class MindmapPanel {
         flex: 1 1 auto;
         min-height: 0;
         overflow: auto;
-        border-radius: 10px;
-        border: 1px solid #e5e7eb;
-        padding: 10px;
-        background: #fff;
+        border-radius: var(--mm-radius-lg);
+        border: 1px solid var(--mm-border);
+        padding: var(--mm-space-3);
+        background: var(--mm-bg-surface);
       }
-      .attrItem { font-size: 13px; color: #374151; margin-bottom: 10px; }
+      .attrItem { font-size: var(--mm-font-ui); color: var(--mm-text-secondary); margin-bottom: var(--mm-space-3); }
       .dock-form-hint {
-        font-size: 12px;
-        color: #6b7280;
-        margin-bottom: 10px;
-        line-height: 1.35;
+        font-size: var(--mm-font-small);
+        color: var(--mm-text-muted);
+        margin-bottom: var(--mm-space-3);
+        line-height: var(--mm-line-normal);
       }
       .dock-form-row {
         display: flex;
         flex-direction: column;
-        gap: 4px;
-        margin-bottom: 10px;
+        gap: var(--mm-space-1);
+        margin-bottom: var(--mm-space-3);
       }
       .dock-form-label {
-        font-size: 11px;
+        font-size: var(--mm-font-small);
         font-weight: 600;
-        color: #4b5563;
+        color: var(--mm-text-secondary);
       }
       .dock-form-row select,
       .dock-form-row input[type='number'] {
         width: 100%;
         max-width: 100%;
         box-sizing: border-box;
-        padding: 4px 6px;
-        border-radius: 6px;
-        border: 1px solid #d1d5db;
-        font-size: 12px;
+        padding: var(--mm-space-1) var(--mm-space-2);
+        border-radius: var(--mm-radius-sm);
+        border: 1px solid var(--mm-border-strong);
+        font-size: var(--mm-font-ui);
       }
       .dock-form-row input[type='color'] {
         width: 100%;
-        height: 28px;
+        height: 30px;
         padding: 0;
-        border: 1px solid #d1d5db;
-        border-radius: 6px;
+        border: 1px solid var(--mm-border-strong);
+        border-radius: var(--mm-radius-sm);
         cursor: pointer;
       }
       .dock-form-actions {
         display: flex;
         flex-wrap: wrap;
-        gap: 6px;
-        margin-top: 4px;
+        gap: var(--mm-space-2);
+        margin-top: var(--mm-space-1);
       }
       .dock-apply-btn {
         flex: 1 1 auto;
         min-width: 72px;
-        padding: 6px 8px;
-        font-size: 12px;
+        padding: var(--mm-space-2) var(--mm-space-3);
+        font-size: var(--mm-font-ui);
         font-weight: 600;
-        border-radius: 8px;
-        border: 1px solid #9ca3af;
-        background: #f3f4f6;
+        border-radius: var(--mm-radius-md);
+        border: 1px solid var(--mm-border-strong);
+        background: var(--mm-bg-subtle);
         cursor: pointer;
-        color: #374151;
+        color: var(--mm-text-secondary);
       }
       .dock-apply-btn:hover {
-        background: #e5e7eb;
+        background: var(--mm-bg-toolbar);
       }
       .dock-apply-btn.dock-secondary {
-        background: #fff;
+        background: var(--mm-bg-surface);
       }
       .dock-form.dock-disabled {
         opacity: 0.55;
@@ -2230,25 +2277,25 @@ export class MindmapPanel {
       .dock-icon-grid {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: 6px;
+        gap: var(--mm-space-2);
       }
       .dock-icon-btn {
-        min-height: 36px;
-        padding: 4px 2px;
-        border-radius: 8px;
-        border: 1px solid #d1d5db;
-        background: #f9fafb;
+        min-height: 38px;
+        padding: var(--mm-space-1) var(--mm-space-1);
+        border-radius: var(--mm-radius-md);
+        border: 1px solid var(--mm-border-strong);
+        background: var(--mm-bg-subtle);
         cursor: pointer;
-        font-size: 18px;
+        font-size: 1.125rem;
         line-height: 1.2;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 2px;
+        gap: var(--mm-space-1);
       }
       .dock-icon-btn:hover {
-        background: #e5e7eb;
+        background: var(--mm-bg-toolbar);
       }
       .dock-icon-btn.mm-selected {
         border-color: #2563eb;
@@ -2256,9 +2303,9 @@ export class MindmapPanel {
         box-shadow: 0 0 0 1px #2563eb inset;
       }
       .dock-icon-btn .dock-icon-label {
-        font-size: 9px;
+        font-size: var(--mm-font-caption);
         font-weight: 600;
-        color: #4b5563;
+        color: var(--mm-text-muted);
         max-width: 100%;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -2382,21 +2429,22 @@ export class MindmapPanel {
       /* Bottom status bar */
       .statusbar {
         flex: 0 0 auto;
-        padding: 6px 10px;
-        border-top: 1px solid #e5e7eb;
-        background: #f9fafb;
-        font-size: 12px;
-        color: #6b7280;
-        height: 28px;
+        padding: var(--mm-space-2) var(--mm-space-3);
+        border-top: 1px solid var(--mm-border);
+        background: var(--mm-bg-subtle);
+        font-size: var(--mm-font-ui);
+        color: var(--mm-text-muted);
+        min-height: 30px;
+        height: auto;
         box-sizing: border-box;
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: var(--mm-space-2);
       }
       .statusbarLeft {
         display: inline-flex;
         align-items: center;
-        gap: 6px;
+        gap: var(--mm-space-2);
         min-width: 0;
         flex: 1 1 auto;
       }
@@ -2404,7 +2452,7 @@ export class MindmapPanel {
         margin-left: auto;
         display: inline-flex;
         align-items: center;
-        gap: 10px;
+        gap: var(--mm-space-3);
         flex-shrink: 0;
       }
       .statusbarSaveLight {
@@ -2427,14 +2475,14 @@ export class MindmapPanel {
       /* 画布左下角：上排 适应 / 根节点 / 还原，下排 − / 百分比 / +（同宽）；中间双击还原 100% 并居中根节点 */
       .canvas-zoom-stack {
         position: absolute;
-        left: 10px;
-        bottom: 10px;
+        left: var(--mm-space-3);
+        bottom: var(--mm-space-3);
         /* 高于 fallbackTree(9) / rootMirror(10)，避免遮挡导致无法点击 */
         z-index: 12;
         display: flex;
         flex-direction: column;
         align-items: stretch;
-        gap: 5px;
+        gap: var(--mm-space-2);
         pointer-events: auto;
         user-select: none;
       }
@@ -2442,7 +2490,7 @@ export class MindmapPanel {
         display: flex;
         flex-direction: row;
         align-items: stretch;
-        gap: 5px;
+        gap: var(--mm-space-2);
         width: 100%;
         min-width: 0;
         box-sizing: border-box;
@@ -2450,17 +2498,17 @@ export class MindmapPanel {
       .canvas-zoom-action-btn {
         flex: 1 1 0;
         min-width: 0;
-        padding: 4px 4px;
+        padding: var(--mm-space-1) var(--mm-space-2);
         margin: 0;
-        border: 1px solid rgba(0, 0, 0, 0.1);
-        border-radius: 6px;
-        background: rgba(255, 255, 255, 0.72);
-        color: #111827;
-        font-size: 11px;
+        border: 1px solid rgba(15, 23, 42, 0.12);
+        border-radius: var(--mm-radius-sm);
+        background: rgba(255, 255, 255, 0.88);
+        color: var(--mm-text);
+        font-size: var(--mm-font-small);
         font-weight: 600;
-        line-height: 1.2;
+        line-height: var(--mm-line-tight);
         cursor: pointer;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+        box-shadow: var(--mm-shadow-sm);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -2480,16 +2528,16 @@ export class MindmapPanel {
         flex-direction: row;
         align-items: center;
         justify-content: center;
-        gap: 2px;
-        padding: 4px 6px;
-        border-radius: 8px;
-        font-size: 12px;
+        gap: var(--mm-space-1);
+        padding: var(--mm-space-1) var(--mm-space-2);
+        border-radius: var(--mm-radius-md);
+        font-size: var(--mm-font-ui);
         font-weight: 600;
-        line-height: 1.25;
-        color: #111827;
-        background: rgba(255, 255, 255, 0.55);
-        border: 1px solid rgba(0, 0, 0, 0.08);
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        line-height: var(--mm-line-tight);
+        color: var(--mm-text);
+        background: rgba(255, 255, 255, 0.72);
+        border: 1px solid rgba(15, 23, 42, 0.1);
+        box-shadow: var(--mm-shadow-sm);
         user-select: none;
         pointer-events: auto;
         width: 100%;
@@ -2500,15 +2548,15 @@ export class MindmapPanel {
       }
       .canvas-zoom-btn {
         flex: 0 0 auto;
-        width: 24px;
-        height: 24px;
+        width: 26px;
+        height: 26px;
         padding: 0;
         margin: 0;
         border: none;
-        border-radius: 6px;
-        background: rgba(0, 0, 0, 0.06);
-        color: #111827;
-        font-size: 16px;
+        border-radius: var(--mm-radius-sm);
+        background: rgba(15, 23, 42, 0.07);
+        color: var(--mm-text);
+        font-size: 1rem;
         font-weight: 700;
         line-height: 1;
         cursor: pointer;
@@ -2556,38 +2604,38 @@ export class MindmapPanel {
       .logDialogCard {
         width: min(720px, calc(100vw - 32px));
         max-height: min(86vh, 640px);
-        background: #ffffff;
-        border: 1px solid #d1d5db;
-        border-radius: 10px;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+        background: var(--mm-bg-surface);
+        border: 1px solid var(--mm-border-strong);
+        border-radius: var(--mm-radius-lg);
+        box-shadow: var(--mm-shadow-dialog);
         overflow: hidden;
         display: flex;
         flex-direction: column;
       }
       .logDialogBody {
-        padding: 0 12px 12px 12px;
+        padding: 0 var(--mm-space-3) var(--mm-space-3) var(--mm-space-3);
         flex: 1 1 auto;
         min-height: 0;
       }
       .logPre {
         margin: 0;
-        padding: 10px 12px;
-        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-        font-size: 11px;
-        line-height: 1.4;
+        padding: var(--mm-space-3);
+        font-family: var(--mm-font-mono);
+        font-size: var(--mm-font-small);
+        line-height: 1.45;
         white-space: pre-wrap;
         word-break: break-word;
-        color: #111827;
-        background: #f3f4f6;
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
+        color: var(--mm-text);
+        background: var(--mm-bg-subtle);
+        border: 1px solid var(--mm-border);
+        border-radius: var(--mm-radius-md);
         min-height: 120px;
         max-height: min(58vh, 480px);
         overflow: auto;
       }
       .logDialogActions {
         justify-content: flex-end;
-        gap: 8px;
+        gap: var(--mm-space-2);
       }
       .logDialogActions button {
         min-width: 88px;
@@ -2600,17 +2648,17 @@ export class MindmapPanel {
         min-width: 0;
         width: max-content;
         max-width: min(86vw, 360px);
-        background: #ffffff;
-        border: 1px solid #cfd4dc;
-        border-radius: 8px;
-        box-shadow: 0 6px 16px rgba(0,0,0,0.18);
-        padding: 6px;
+        background: var(--mm-bg-surface);
+        border: 1px solid var(--mm-border);
+        border-radius: var(--mm-radius-md);
+        box-shadow: var(--mm-shadow-md);
+        padding: var(--mm-space-2);
       }
       .ctxMenu.hidden { display: none; }
       .ctxMenuTitle {
-        font-size: 12px;
-        color: #6b7280;
-        padding: 4px 8px 6px 8px;
+        font-size: var(--mm-font-small);
+        color: var(--mm-text-muted);
+        padding: var(--mm-space-1) var(--mm-space-2) var(--mm-space-2) var(--mm-space-2);
       }
       .ctxMenu button {
         display: block;
@@ -2618,13 +2666,14 @@ export class MindmapPanel {
         text-align: left;
         border: 0;
         background: transparent;
-        border-radius: 6px;
-        padding: 7px 8px;
+        border-radius: var(--mm-radius-sm);
+        padding: var(--mm-space-2) var(--mm-space-3);
         cursor: pointer;
-        color: #111827;
+        color: var(--mm-text);
+        font-size: var(--mm-font-ui);
         white-space: nowrap;
       }
-      .ctxMenu button:hover { background: #f3f4f6; }
+      .ctxMenu button:hover { background: var(--mm-bg-subtle); }
 
       /* Left-button lasso selection */
       .selectionBox {
@@ -2651,38 +2700,46 @@ export class MindmapPanel {
       .dialogOverlay.hidden { display: none; }
       .dialogCard {
         width: min(460px, calc(100vw - 32px));
-        background: #ffffff;
-        border: 1px solid #d1d5db;
-        border-radius: 10px;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+        background: var(--mm-bg-surface);
+        border: 1px solid var(--mm-border-strong);
+        border-radius: var(--mm-radius-lg);
+        box-shadow: var(--mm-shadow-dialog);
         overflow: hidden;
       }
       .dialogTitle {
-        padding: 10px 14px;
-        border-bottom: 1px solid #e5e7eb;
+        padding: var(--mm-space-3) var(--mm-space-4);
+        border-bottom: 1px solid var(--mm-border);
+        font-size: var(--mm-font-body);
         font-weight: 700;
-        color: #111827;
-        background: #f9fafb;
+        color: var(--mm-text);
+        background: var(--mm-bg-subtle);
       }
       .dialogBody {
-        padding: 14px;
-        color: #1f2937;
+        padding: var(--mm-space-4);
+        color: var(--mm-text-secondary);
+        font-size: var(--mm-font-ui);
         white-space: pre-wrap;
-        line-height: 1.45;
+        line-height: var(--mm-line-normal);
       }
       .dialogActions {
-        padding: 10px 14px;
+        padding: var(--mm-space-3) var(--mm-space-4);
         display: flex;
         justify-content: flex-end;
-        border-top: 1px solid #e5e7eb;
+        gap: var(--mm-space-2);
+        border-top: 1px solid var(--mm-border);
       }
       .dialogActions button {
         min-width: 82px;
-        border: 1px solid #cbd5e1;
-        border-radius: 8px;
-        padding: 6px 12px;
+        border: 1px solid var(--mm-border-strong);
+        border-radius: var(--mm-radius-md);
+        padding: var(--mm-space-2) var(--mm-space-3);
         cursor: pointer;
-        background: #f3f4f6;
+        font-size: var(--mm-font-ui);
+        background: var(--mm-bg-subtle);
+        color: var(--mm-text-secondary);
+      }
+      .dialogActions button:hover {
+        background: var(--mm-bg-toolbar);
       }
     </style>
   </head>
@@ -3118,6 +3175,8 @@ export class MindmapPanel {
         /** 与窗口 GUI 规则一致：统一日志流，上限约 4000 行（超出丢弃最旧）。 */
         const LOG_MAX_LINES = 4000;
         const logLines = [];
+        /** 为 true 时表示当前由快捷键触发：无效操作只写状态栏 + Log，不弹 errorDialog */
+        let invalidActionKeyboardContext = false;
 
         function logTimestamp() {
           return new Date().toISOString().replace('T', ' ').slice(0, 19);
@@ -3857,6 +3916,16 @@ export class MindmapPanel {
           });
         }
 
+        function createBlankBootTree() {
+          return {
+            root: {
+              id: 'r_' + Math.random().toString(16).slice(2, 18),
+              topic: 'New Mindmap',
+              children: []
+            }
+          };
+        }
+
         function makeMindData(tree) {
           // jsMind expects a root node with children.
           function toJmNode(node) {
@@ -3971,6 +4040,28 @@ export class MindmapPanel {
         }
 
         function init(tree, ext) {
+          try {
+            pendingMindPanelScrollFreeze = null;
+            for (const n of lassoSelectedNodes) {
+              try {
+                n.classList.remove('lasso-selected');
+                n.classList.remove('selected');
+              } catch (_) {}
+            }
+            lassoSelectedNodes = [];
+            selectedNode = null;
+            try {
+              if (jm && typeof jm.select_clear === 'function') {
+                jm.select_clear();
+              }
+            } catch (_) {}
+            jm = null;
+            try {
+              var jmShell = document.getElementById('jsmind_container');
+              if (jmShell) jmShell.innerHTML = '';
+            } catch (_) {}
+          } catch (_) {}
+
           lastKnownMindmapTree = tree && tree.root ? tree : null;
           try {
             if (window.__MINDMAP_BROWSER_FILE_OPS__) {
@@ -4660,6 +4751,10 @@ export class MindmapPanel {
         }
 
         function notifyInvalidAction(message) {
+          if (invalidActionKeyboardContext) {
+            setStatus(String(message == null ? '' : message), true);
+            return;
+          }
           if (statusbarTextEl) statusbarTextEl.textContent = message;
           if (statusbarEl) statusbarEl.classList.add('error');
           showErrorDialog(message);
@@ -5282,6 +5377,80 @@ export class MindmapPanel {
               setSingleSelectStatus(selectedNode);
             }
           } catch (_) {}
+        }
+
+        function clearLassoIfMultiSelect() {
+          if (lassoSelectedNodes && lassoSelectedNodes.length > 1) {
+            clearLassoMarks();
+          }
+        }
+
+        /** 方向键 ↑/↓：在同级兄弟之间切换选中。根节点无兄弟，不移动。 */
+        function navigateSelectSibling(delta) {
+          if (!jm) return;
+          clearLassoIfMultiSelect();
+          let node = getActiveSelectedNode();
+          if (!node) {
+            const r = jm.get_root && jm.get_root();
+            if (r) {
+              selectNodeById(r.id);
+            }
+            return;
+          }
+          if (rootId && String(node.id) === String(rootId)) {
+            return;
+          }
+          const other =
+            delta < 0
+              ? jm.find_node_before
+                ? jm.find_node_before(node)
+                : null
+              : jm.find_node_after
+                ? jm.find_node_after(node)
+                : null;
+          if (other) {
+            selectNodeById(other.id);
+          }
+        }
+
+        /** 方向键 ←：选中父节点。 */
+        function navigateSelectParent() {
+          if (!jm) return;
+          clearLassoIfMultiSelect();
+          const node = getActiveSelectedNode();
+          if (!node) {
+            const r = jm.get_root && jm.get_root();
+            if (r) {
+              selectNodeById(r.id);
+            }
+            return;
+          }
+          const p = node.parent;
+          if (!p) {
+            return;
+          }
+          selectNodeById(p.id);
+        }
+
+        /** 方向键 →：选中第一个子节点；无子节点则不变化。 */
+        function navigateSelectFirstChild() {
+          if (!jm) return;
+          clearLassoIfMultiSelect();
+          let node = getActiveSelectedNode();
+          if (!node) {
+            node = jm.get_root ? jm.get_root() : null;
+          }
+          if (!node) {
+            return;
+          }
+          const kids = node.children;
+          if (!kids || !kids.length) {
+            return;
+          }
+          const first = kids[0];
+          if (first && first.id != null) {
+            selectNodeById(first.id);
+          }
         }
 
         function addChild() {
@@ -5960,6 +6129,7 @@ export class MindmapPanel {
         );
 
         // Keyboard interaction (Windows-like):
+        // ↑/↓（画布内）=> 在兄弟节点间切换选中；←/=> 父节点 / 第一个子节点；
         // Enter => 新建兄弟节点并选中新节点；Tab（在画布内）=> 新建子节点并选中新节点；
         // Delete / Backspace => 删除当前选中节点；
         // Alt+↑/↓ => 调整兄弟顺序；Alt+←/→ => 提升 / 下降；
@@ -5975,6 +6145,46 @@ export class MindmapPanel {
               target.isContentEditable
             );
           if (isTyping) return;
+
+          invalidActionKeyboardContext = true;
+          try {
+          const inCanvasNav =
+            canvasWrapEl &&
+            e.target instanceof Node &&
+            canvasWrapEl.contains(e.target);
+          if (
+            !e.altKey &&
+            !e.ctrlKey &&
+            !e.metaKey &&
+            !e.shiftKey &&
+            inCanvasNav &&
+            jm
+          ) {
+            if (e.key === 'ArrowUp') {
+              navigateSelectSibling(-1);
+              e.preventDefault();
+              e.stopPropagation();
+              return;
+            }
+            if (e.key === 'ArrowDown') {
+              navigateSelectSibling(1);
+              e.preventDefault();
+              e.stopPropagation();
+              return;
+            }
+            if (e.key === 'ArrowLeft') {
+              navigateSelectParent();
+              e.preventDefault();
+              e.stopPropagation();
+              return;
+            }
+            if (e.key === 'ArrowRight') {
+              navigateSelectFirstChild();
+              e.preventDefault();
+              e.stopPropagation();
+              return;
+            }
+          }
 
           // Alt+↑/↓：兄弟顺序；Alt+←/→：提升 / 下降（父子关系）。
           if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
@@ -6095,6 +6305,9 @@ export class MindmapPanel {
             cutMindNodeSelection();
             e.preventDefault();
             e.stopPropagation();
+          }
+          } finally {
+            invalidActionKeyboardContext = false;
           }
         }, true);
 
@@ -6830,10 +7043,7 @@ export class MindmapPanel {
               } catch (_) {}
               suppressDirty = true;
               try {
-                init(
-                  { root: { id: 'root', topic: 'New Mindmap', children: [] } },
-                  'mmd'
-                );
+                init(createBlankBootTree(), 'mmd');
                 setContentClean();
                 setStatus(currentLang === 'zh' ? '已新建' : 'New mindmap');
               } finally {

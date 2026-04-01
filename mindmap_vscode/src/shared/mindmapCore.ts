@@ -12,6 +12,17 @@ export interface CoreMindmapTree {
 
 export type CoreMindmapExt = 'mmd' | 'jm';
 
+/** 新建 / 重置用：空子树 + 新根 id（避免与上一份脑图的根节点实例混用）。 */
+export function createBlankCoreMindmapTree(): CoreMindmapTree {
+  return {
+    root: {
+      id: 'r_' + Math.random().toString(16).slice(2, 18),
+      topic: 'New Mindmap',
+      children: []
+    }
+  };
+}
+
 function nextIdFactory() {
   let n = 0;
   return () => `n_${n++}`;

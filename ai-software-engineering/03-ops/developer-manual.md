@@ -32,6 +32,24 @@
 
 - Node.js / npm；扩展依赖见 `package.json`；MCP 子包见 `mcp-server/package.json`。
 
+## 前端脑图布局（jsMind 定制）
+
+- `mindmap_vscode/media/jsmind/jsmind.js`：根节点左右分列时，在 `_layout_offset` 内对左侧子节点数组在调用 `_layout_offset_subnodes` 前执行 `reverse()`，使一级子节点沿根节点呈顺时针环绕顺序。升级或替换上游 jsMind 后需核对是否保留该改动。
+
+## 空白脑图与「新建」语义
+
+- **工厂方法**：`createBlankMindmapTree()`（`src/mindmap/model.ts`）→ `createBlankCoreMindmapTree()`（`src/shared/mindmapCore.ts`）。根 id 为 **`r_` + 随机**，子节点为空；扩展命令「新建文件」、面板「新建」、空文档回退、未命名文档还原等路径应使用该工厂，避免与上一份脑图共用一个固定 `root` id。
+- **Webview `init`**：每次加载树前清空 `#jsmind_container` 并重置框选/选中，再 `new jsMind` + `show`。
+
+## 快捷键与无效操作提示
+
+- 画布 **快捷键**触发的无效操作（`notifyInvalidAction`）：仅 **状态栏 + Log**，不弹 `errorDialog`（由 `invalidActionKeyboardContext` 控制）。
+- **菜单 / 按钮**触发的同类提示：仍可弹窗，且 `showErrorDialog` 会写 Log。
+
+## 首屏与整页重载
+
+- 模板在 `<head>` 靠前位置为 `html` 设置与 `--mm-bg-app` 一致的背景色，减轻 **F5 / 热更新整页 reload** 时的白屏闪烁；脚本绘制 jsMind 仍可能有一帧延迟，属正常现象。
+
 ## 第三方许可证
 
 - 仓库根目录 [`THIRD_PARTY_LICENSES.md`](../../THIRD_PARTY_LICENSES.md)：**运行时/交付物**相关依赖与资产摘要；变更 `dependencies` 或随包资源时请同步更新该文件。

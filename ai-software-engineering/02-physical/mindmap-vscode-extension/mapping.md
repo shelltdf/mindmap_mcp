@@ -10,7 +10,8 @@
 | CustomTextEditor | `mindmap_vscode/src/mindmapCustomTextEditor.ts` |
 | 视图类型常量 | `mindmap_vscode/src/mindmapEditorViewType.ts` |
 | Cursor `mcp.json` 合并 | `mindmap_vscode/src/mcpCursorConfig.ts` |
-| 树模型与格式 | `mindmap_vscode/src/mindmap/model.ts` |
-| 共享核心（桌面复用） | `mindmap_vscode/src/shared/mindmapCore.ts` |
+| 树模型与格式、空白树工厂 `createBlankMindmapTree` | `mindmap_vscode/src/mindmap/model.ts` |
+| 共享核心（解析/序列化、空白树 `createBlankCoreMindmapTree`） | `mindmap_vscode/src/shared/mindmapCore.ts` |
+| jsMind 运行时（含布局补丁：左侧子节点 `reverse`） | `mindmap_vscode/media/jsmind/jsmind.js` |
 | 贡献点与元数据 | `mindmap_vscode/package.json` |
 | 网页调试 HTTP、`/` → `out/web_dev.html` | `mindmap_vscode/run_web.py`、`mindmap_vscode/scripts/gen_web_dev_html.js` |

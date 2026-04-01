@@ -1,5 +1,9 @@
 export type MindmapExt = 'mmd' | 'xmind' | 'jm';
-import { parseCoreMindmapText, serializeCoreMindmapTree } from '../shared/mindmapCore';
+import {
+  createBlankCoreMindmapTree,
+  parseCoreMindmapText,
+  serializeCoreMindmapTree
+} from '../shared/mindmapCore';
 
 export interface MindmapTreeNode {
   id: string;
@@ -11,6 +15,11 @@ export interface MindmapTreeNode {
 
 export interface MindmapTree {
   root: MindmapTreeNode;
+}
+
+/** 新建脑图：仅根节点、无子节点，根 id 每次重新生成。 */
+export function createBlankMindmapTree(): MindmapTree {
+  return createBlankCoreMindmapTree();
 }
 
 function normalizeExt(ext: string): MindmapExt {

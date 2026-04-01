@@ -11,7 +11,13 @@ import {
 import { MindmapCustomTextEditorProvider } from './mindmapCustomTextEditor';
 import { MINDMAP_CUSTOM_TEXT_EDITOR_VIEW_TYPE } from './mindmapEditorViewType';
 import { MindmapPanel } from './panel';
-import { MindmapExt, MindmapTree, parseMindmapText, parseMindmapXmindFile, serializeMindmapTree } from './mindmap/model';
+import {
+  MindmapExt,
+  createBlankMindmapTree,
+  parseMindmapText,
+  parseMindmapXmindFile,
+  serializeMindmapTree
+} from './mindmap/model';
 
 /** 部分宿主（如新版 VS Code）提供，早于 dispose/deactivate 展示关窗保存提示 */
 type VscodeWorkspaceWithShutdown = typeof vscode.workspace & {
@@ -187,15 +193,8 @@ export async function activate(context: vscode.ExtensionContext) {
 
         // If no file is opened, open a blank mindmap editor directly.
         if (!filePath) {
-          const tree = {
-            root: {
-              id: 'root',
-              topic: 'New Mindmap',
-              children: []
-            }
-          };
           const { panel } = MindmapPanel.createOrShow(context, undefined);
-          await panel.setTree(tree, 'mmd');
+          await panel.setTree(createBlankMindmapTree(), 'mmd');
           return;
         }
 
@@ -243,14 +242,6 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(disposable);
-
-  const defaultNewMindmapTree = (): MindmapTree => ({
-    root: {
-      id: 'root',
-      topic: 'New Mindmap',
-      children: []
-    }
-  });
 
   async function createNewMindmapFile(): Promise<void> {
     const zh = vscode.env.language.toLowerCase().startsWith('zh');
@@ -311,7 +302,7 @@ export async function activate(context: vscode.ExtensionContext) {
     }
 
     try {
-      const text = serializeMindmapTree(defaultNewMindmapTree(), ext);
+      const text = serializeMindmapTree(createBlankMindmapTree(), ext);
       const bytes = new TextEncoder().encode(text);
       await vscode.workspace.fs.writeFile(uri, bytes);
       await vscode.commands.executeCommand('vscode.openWith', uri, MINDMAP_CUSTOM_TEXT_EDITOR_VIEW_TYPE);
