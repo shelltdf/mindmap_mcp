@@ -35,7 +35,8 @@
   }
 
   function parseMermaidMindmap(text) {
-    var mermaid = extractMermaidBlock(text);
+    var noBom = text.replace(/^\uFEFF/, '');
+    var mermaid = extractMermaidBlock(noBom);
     var lines = mermaid
       .split(/\r?\n/)
       .map(function (l) {
@@ -65,19 +66,35 @@
     var rootCandidate = lines[startIdx];
     if (!rootCandidate) throw new Error('Cannot find root line');
 
-    var rootDepth = Math.floor(leadingSpaces(rootCandidate) / 2);
+    var baseIndent = leadingSpaces(rootCandidate);
+    var minDelta = Infinity;
+    for (var j = startIdx + 1; j < lines.length; j++) {
+      var li0 = leadingSpaces(lines[j]);
+      if (li0 > baseIndent) {
+        var delta0 = li0 - baseIndent;
+        if (delta0 > 0 && delta0 < minDelta) minDelta = delta0;
+      }
+    }
+    var indentStep = minDelta === Infinity ? 2 : Math.max(1, minDelta);
+    function depthOfLine(raw) {
+      var li = leadingSpaces(raw);
+      if (li <= baseIndent) return 1;
+      var d = Math.floor((li - baseIndent) / indentStep);
+      return d < 1 ? 1 : d;
+    }
+
     var root = { id: idGen(), topic: parseLineToTopic(rootCandidate), children: [] };
-    stack.push({ node: root, depth: rootDepth });
+    stack.push({ node: root, depth: 0 });
 
     for (var i = startIdx + 1; i < lines.length; i++) {
       var raw = lines[i];
-      var depth = Math.floor(leadingSpaces(raw) / 2);
+      var depth = depthOfLine(raw);
       var node = { id: idGen(), topic: parseLineToTopic(raw), children: [] };
       while (stack.length > 0 && stack[stack.length - 1].depth >= depth) {
         stack.pop();
       }
       if (stack.length === 0) {
-        stack.push({ node: root, depth: rootDepth });
+        stack.push({ node: root, depth: 0 });
       }
       stack[stack.length - 1].node.children.push(node);
       stack.push({ node: node, depth: depth });

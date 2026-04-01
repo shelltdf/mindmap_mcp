@@ -19,7 +19,8 @@ function extractPanelTemplate() {
     throw new Error('Cannot find html template in panel.ts');
   }
   const contentStart = start + 'return /* html */ `'.length;
-  const endMarker = '</html>`;';
+  // 模板以 </html>` 结束，其后可有 .replace(...) 链，故不再要求 `;`
+  const endMarker = '</html>`';
   const endIdx = src.indexOf(endMarker, contentStart);
   if (endIdx < 0) {
     throw new Error('Cannot find html template end in panel.ts');
@@ -38,6 +39,8 @@ function makeWebDevHtml(host, port) {
   const mindmapCoreUrl = `${base}/media/mindmap-core.js`;
   const jsmindCssUrl = `${base}/media/jsmind/jsmind.css`;
   const jsmindScriptUrl = `${base}/media/jsmind/jsmind.js`;
+  const webviewThemeInitUrl = `${base}/media/webview-theme-init.js`;
+  const webviewAppUrl = `${base}/media/webview-app.js`;
   /** 与 VS Code webview 中 asWebviewUri(media/icon.png) 等价，供标题栏 <img> 使用 */
   const appTitleIconPngUrl = `${base}/media/icon.png`;
   const nonce = crypto.randomBytes(8).toString('hex');
@@ -55,6 +58,8 @@ function makeWebDevHtml(host, port) {
     .replace(/\$\{mindmapCoreUrl\}/g, mindmapCoreUrl)
     .replace(/\$\{jsmindCssUrl\}/g, jsmindCssUrl)
     .replace(/\$\{jsmindScriptUrl\}/g, jsmindScriptUrl)
+    .replace(/___MM_SRC_WEBVIEW_THEME___/g, webviewThemeInitUrl)
+    .replace(/___MM_SRC_WEBVIEW_APP___/g, webviewAppUrl)
     .replace(/\$\{appTitleIconPngUrl\}/g, appTitleIconPngUrl)
     .replace(/\$\{bootJsonForHtml\}/g, bootJsonForHtml);
 
@@ -88,27 +93,8 @@ function makeWebDevHtml(host, port) {
   }
   let html = tpl.slice(0, pos + marker.length) + bridge + tpl.slice(pos + marker.length);
   // run_web.py 在 out/web_dev_meta.json 中递增 seq；页面轮询后自动刷新（与 tsc --watch 联动）。
-  const livereload = `
-<script>
-(function () {
-  var lastSeq = null;
-  function tick() {
-    fetch('/out/web_dev_meta.json?cb=' + Date.now(), { cache: 'no-store' })
-      .then(function (r) { return r.json(); })
-      .then(function (d) {
-        var s = typeof d.seq === 'number' ? d.seq : 0;
-        if (lastSeq === null) lastSeq = s;
-        else if (s > lastSeq) {
-          lastSeq = s;
-          location.reload();
-        }
-      })
-      .catch(function () {});
-  }
-  setInterval(tick, 600);
-})();
-</script>
-`;
+  const livereloadUrl = `${base}/media/web-dev-livereload.js`;
+  const livereload = `<script nonce="${nonce}" src="${livereloadUrl}"></script>`;
   const hi = html.lastIndexOf('</html>');
   if (hi < 0) {
     throw new Error('no </html> in panel template');

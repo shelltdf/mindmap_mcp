@@ -44,7 +44,8 @@ function extractMermaidBlock(text: string): string {
 }
 
 function parseMermaidMindmap(text: string): MindmapTree {
-  const mermaid = extractMermaidBlock(text);
+  const noBom = text.replace(/^\uFEFF/, '');
+  const mermaid = extractMermaidBlock(noBom);
   const lines = mermaid
     .split(/\r?\n/)
     .map((l) => l.replace(/\t/g, '  ').trimEnd())
@@ -56,42 +57,47 @@ function parseMermaidMindmap(text: string): MindmapTree {
     // allow missing "mindmap" line: still try
   }
 
-  // root line is expected to have form: root((title))
-  const rootLine = lines.find((l, idx) => idx > 0 && l.includes('root(('));
-  if (!rootLine) {
-    // fallback: assume the second non-empty line is root
-  }
-
   const idGen = nextIdFactory();
-  // Stack entry: { node, depth }
   const stack: { node: MindmapTreeNode; depth: number }[] = [];
 
   function parseLineToTopic(line: string): string {
     const trimmed = line.trim();
-    // root((title)) -> title
     const rootMatch = trimmed.match(/^root\(\(\s*(.*?)\s*\)\)\s*$/);
     if (rootMatch) return rootMatch[1];
-    // fallback: take whole text as topic (strip leading symbols if any)
     return trimmed.replace(/^-+\s*/, '');
   }
 
-  // Determine root line index: if "mindmap" exists, root begins after it.
   let startIdx = 0;
   if (first.startsWith('mindmap')) startIdx = 1;
 
   const rootCandidate = lines[startIdx];
   if (!rootCandidate) throw new Error('Cannot find root line');
 
-  // Compute depth by indentation: assume 2 spaces per level.
   const leadingSpaces = (s: string) => s.match(/^ */)?.[0].length ?? 0;
-  const rootDepth = Math.floor(leadingSpaces(rootCandidate) / 2);
+  const baseIndent = leadingSpaces(rootCandidate);
+  let minDelta = Infinity;
+  for (let j = startIdx + 1; j < lines.length; j++) {
+    const li = leadingSpaces(lines[j]);
+    if (li > baseIndent) {
+      const delta = li - baseIndent;
+      if (delta > 0 && delta < minDelta) minDelta = delta;
+    }
+  }
+  const indentStep = minDelta === Infinity ? 2 : Math.max(1, minDelta);
+  const depthOfLine = (raw: string) => {
+    const li = leadingSpaces(raw);
+    if (li <= baseIndent) return 1;
+    const d = Math.floor((li - baseIndent) / indentStep);
+    return d < 1 ? 1 : d;
+  };
+
   const rootTopic = parseLineToTopic(rootCandidate);
   const root: MindmapTreeNode = { id: idGen(), topic: rootTopic, children: [] };
-  stack.push({ node: root, depth: rootDepth });
+  stack.push({ node: root, depth: 0 });
 
   for (let i = startIdx + 1; i < lines.length; i++) {
     const raw = lines[i];
-    const depth = Math.floor(leadingSpaces(raw) / 2);
+    const depth = depthOfLine(raw);
     const topic = parseLineToTopic(raw);
     const node: MindmapTreeNode = { id: idGen(), topic, children: [] };
 
@@ -99,8 +105,7 @@ function parseMermaidMindmap(text: string): MindmapTree {
       stack.pop();
     }
     if (stack.length === 0) {
-      // If indentation is weird, treat as root child.
-      stack.push({ node: root, depth: rootDepth });
+      stack.push({ node: root, depth: 0 });
     }
     stack[stack.length - 1].node.children.push(node);
     stack.push({ node, depth });

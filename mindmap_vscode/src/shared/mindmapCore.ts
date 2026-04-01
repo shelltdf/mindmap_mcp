@@ -55,7 +55,8 @@ function extractMermaidBlock(text: string): string {
 }
 
 function parseMermaidMindmap(text: string): CoreMindmapTree {
-  const mermaid = extractMermaidBlock(text);
+  const noBom = text.replace(/^\uFEFF/, '');
+  const mermaid = extractMermaidBlock(noBom);
   const lines = mermaid
     .split(/\r?\n/)
     .map((l) => l.replace(/\t/g, '  ').trimEnd())
@@ -79,17 +80,38 @@ function parseMermaidMindmap(text: string): CoreMindmapTree {
   const rootCandidate = lines[startIdx];
   if (!rootCandidate) throw new Error('Cannot find root line');
 
-  const rootDepth = Math.floor(leadingSpaces(rootCandidate) / 2);
+  /**
+   * 深度按「相对根行的缩进」计算，根在栈中为 depth 0。
+   * 缩进步长不硬编码为 2：从后续行里取「大于根缩进的最小正差值」作为一级缩进（兼容 2/4 空格或混存的手改 .mmd），
+   * 避免层级被算错导致父子关系与连线错乱。
+   */
+  const baseIndent = leadingSpaces(rootCandidate);
+  let minDelta = Infinity;
+  for (let j = startIdx + 1; j < lines.length; j++) {
+    const li = leadingSpaces(lines[j]);
+    if (li > baseIndent) {
+      const delta = li - baseIndent;
+      if (delta > 0 && delta < minDelta) minDelta = delta;
+    }
+  }
+  const indentStep = minDelta === Infinity ? 2 : Math.max(1, minDelta);
+  const depthOfLine = (raw: string) => {
+    const li = leadingSpaces(raw);
+    if (li <= baseIndent) return 1;
+    const d = Math.floor((li - baseIndent) / indentStep);
+    return d < 1 ? 1 : d;
+  };
+
   const root: CoreMindmapTreeNode = {
     id: idGen(),
     topic: parseLineToTopic(rootCandidate),
     children: []
   };
-  stack.push({ node: root, depth: rootDepth });
+  stack.push({ node: root, depth: 0 });
 
   for (let i = startIdx + 1; i < lines.length; i++) {
     const raw = lines[i];
-    const depth = Math.floor(leadingSpaces(raw) / 2);
+    const depth = depthOfLine(raw);
     const node: CoreMindmapTreeNode = {
       id: idGen(),
       topic: parseLineToTopic(raw),
@@ -99,7 +121,7 @@ function parseMermaidMindmap(text: string): CoreMindmapTree {
       stack.pop();
     }
     if (stack.length === 0) {
-      stack.push({ node: root, depth: rootDepth });
+      stack.push({ node: root, depth: 0 });
     }
     stack[stack.length - 1].node.children.push(node);
     stack.push({ node, depth });

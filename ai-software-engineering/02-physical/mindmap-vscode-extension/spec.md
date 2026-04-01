@@ -25,8 +25,15 @@
 - MCP 工具里的 `filePath`：**忽略**，始终使用当前聚焦面板。
 - `get_editor_state` 在无面板时**不**因 MCP 子进程缺少 token 而由桥判断——token 校验先于 method 分发；MCP 层在 token 为空时直接抛错。
 
-## 脑图数据与 Webview 初始化（`panel.ts` + `mindmap-core.js` + jsMind）
+## 脑图数据与 Webview 初始化（`panel.ts` + `media/*.js` + `mindmap-core.js` + jsMind）
 
+- **脚本与资源拆分**：`_getHtmlForWebview` 输出的 HTML **不包含**大块内联可执行脚本（避免部分环境 CSP / nonce 与模板不一致导致整段脚本被拦截）。约定如下：
+  - **壳与样式**：仍在 `mindmap_vscode/src/panel.ts` 的模板字符串中（`return \`…\``.replace(…)）。
+  - **主题早置**：`media/webview-theme-init.js`（设置 `html[data-mm-ui]`，与 `--mm-bg-app` 等一致）。
+  - **主逻辑**：`media/webview-app.js`（jsMind 初始化、画布交互、Dock、与宿主 `postMessage` 等）。
+  - **启动数据**：`<script type="application/json" id="mindmap-boot-json">…</script>` 注入 JSON；`webview-app.js` 入口解析为 `__MINDMAP_BOOT__`（含 `tree` / `ext` / `uiLanguage`）。
+  - **扩展资源 URL 占位符**：模板中使用字面量 `___MM_SRC_WEBVIEW_THEME___`、`___MM_SRC_WEBVIEW_APP___`，在 `panel.ts` 返回前经 `.replace(/___MM_SRC_WEBVIEW_THEME___/g, webviewThemeInitUrl)` 等与 **`webview.asWebviewUri(…media/…)`** 结果替换；**不得**依赖未经过上述替换的 `${webviewAppUrl}` 字面（本地 `out/web_dev.html` 生成见下「开发调试」）。
+- **外链顺序**：`mindmap-core.js` → `jsmind.js` → `mindmap-boot-json` → `webview-app.js`。
 - **换树策略（减轻闪烁）**：宿主 `MindmapPanel._loadTreeIntoWebview`：**首次**（Webview 尚未上报 `mindmap:ready`）必须把树写入 **`webview.html` 注入**，否则脚本末尾才注册 `message` 时 `postMessage(mindmap:setTree)` 会丢失。**首次就绪后**置 `_webviewJsReady`，此后同一面板的「新建 / 打开 / 替换树」仅 **`postMessage({ type: 'mindmap:setTree', tree, ext, uiLanguage })`**，**不再**整页赋值 `webview.html`，避免整页重载白屏闪烁。
 - **空白 / 新建默认树**：由 `createBlankMindmapTree()`（`mindmap_vscode/src/mindmap/model.ts`，内部调用 `shared/mindmapCore.ts` 的 `createBlankCoreMindmapTree`）生成。根节点 **无子节点**；根 **id 每次为新**（`r_` 前缀 + 随机十六进制），与上一份会话的根节点区分，避免模型层混用。
 - **每次 `init(tree, ext)`**：在创建新的 `jsMind` 实例前，清空 `#jsmind_container` DOM、重置框选/单选/滚动冻结等临时状态，避免旧画布残留。
@@ -35,6 +42,11 @@
 - **画布内方向键（无修饰键）**：`↑`/`↓` 在兄弟节点间切换选中；`←`/`→` 选中父节点 / 第一个子节点。`Alt`+方向键仍为兄弟顺序与提升/下降，与之互斥分支处理。
 - **选中节点视口**：`ensureMindNodeInCanvasView(nodeId)` 在新建节点后，以及**无修饰键方向键**切换选中、`Alt`+方向键（兄弟顺序 / 提升 / 下降）移动节点后调用。视口目标为**选中节点 + 邻域**（若存在）：**父节点**、**第一个子节点**、**上一个兄弟**、**下一个兄弟**（根无上下兄弟）；先合并各主题节点 DOM 的屏幕矩形，再**平移**；若合并框仍大于客户区则**缩小 zoom**（有下限），使整块区域落入可视区。
 - **整页重载首帧**：模板在 `<head>` 内尽早注入 `html { background-color: #f1f5f9 }`（与 `--mm-bg-app` 一致），减轻浏览器或 Webview 整页刷新时的白屏闪烁（仅 **首次**注入 HTML 时经历整页加载；见上文「换树策略」）。
+
+## jsMind 布局与节点样式后重算（`webview-app.js` + vendor）
+
+- **问题**：对 `jmnode` 应用格式（字体、图标类等）会改变 DOM 尺寸。仅调用 `jm.view.relayout()`（内部为 `expand_size` + `_show`）**不会**再次执行 `layout.layout()`，布局仍按**旧** `node._data.view.width/height` 计算；根宽参与一级子节点 offset，易出现**根→一级**连线与框错位，深层相对父节点链式计算时观感可能仍正常。
+- **过程**：`syncMindNodeSizesFromDom()` 对当前 **可见** 节点将 `element.clientWidth` / `clientHeight` 写回 `view`；`jm.layout.layout()` 全量重算；`jm.view.relayout()` 扩展画布并重绘节点与连线。在 `applyAllMindNodeVisuals` / 相关编辑事件后通过 `requestAnimationFrame` 链调用（与实现一致）。
 
 ## 视图平移与缩放（外层 `panX`/`panY`/`zoomScale` + `applyViewTransform`）
 
@@ -51,5 +63,7 @@
 ## 开发调试（Web，非 VSIX）
 
 - **入口脚本**：`mindmap_vscode/run_web.py`：默认**不**修改 `package.json`；可选 `--bump-version` 将 patch +1（与 `build.py` 类似）。本地起 HTTP，**根路径 `/`** 映射为 `out/web_dev.html`（由 `scripts/gen_web_dev_html.js` 自 `panel.ts` 模板生成）；不经过扩展宿主，用于 UI/脚本快速迭代。网页是否更新由源码编译与 watch/轮询驱动，与版本号无关。
-- **热更新**：生成页可轮询 `out/web_dev_meta.json`，序号变化时执行 `location.reload()`，属**整页重载**，仍可能出现短暂视觉跳变；首帧背景色仅减轻白屏，无法消除脚本重绘脑图本身的时序差。
+- **生成规则**：`gen_web_dev_html.js` 从 `panel.ts` 抽取 **`return /* html */ \`<!DOCTYPE html>…\`` 至首个 `</html>\``** 的片段（模板在 `</html>` 后可有 `.replace(…)` 链，**不属于**抽取范围）。对 `${cspSource}`、`${nonce}`、`___MM_SRC_WEBVIEW_*___` 等做字符串替换为 `http://127.0.0.1:{port}/…`；在 `jsmind` 外链之后注入 **`acquireVsCodeApi` 桩**；在 `</html>` 前注入 **`media/web-dev-livereload.js`** 外链（热更新轮询），**避免**内联脚本以兼容严格 CSP / Cursor 浏览器预览。
+- **维护义务**：修改 `panel.ts` 内 HTML 模板或占位符后，须执行 **`npm run gen:web-dev`** 或经 **`run_web.py` 启动**（会调用生成器），否则 `out/web_dev.html`（gitignore）可能过期，出现脚本 URL 未替换或 404。`out/` 不纳入版本库，依赖本地生成。
+- **热更新**：浏览器轮询 `out/web_dev_meta.json`，序号变化时 `location.reload()`，属**整页重载**；实现位于 `media/web-dev-livereload.js`。
 - **能力差异**：页面内注入 `acquireVsCodeApi` 桩（见生成脚本），与真实 Webview 的消息/持久化行为可能不一致，以扩展内行为为准。

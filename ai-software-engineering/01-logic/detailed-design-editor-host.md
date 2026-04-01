@@ -30,6 +30,11 @@
 - **无修饰键**且焦点在画布区域：`↑`/`↓` 在同级兄弟间切换选中（根无兄弟）；`←` 选中父节点；`→` 选中第一个子节点。
 - **`Alt` + 方向键**仍为调整兄弟顺序与提升/下降，与上述导航区分。
 
+## Webview 脚本与布局（与物理规格一致）
+
+- **拆分**：可执行逻辑主要在 `media/webview-app.js`；`panel.ts` 生成带外链与 boot JSON 的 HTML；资源 URL 经占位符替换为 `asWebviewUri`（见 `02-physical/mindmap-vscode-extension/spec.md`）。
+- **样式后布局**：节点格式变更后需 `layout.layout()` + `view.relayout()`，避免根→一级几何与连线脱节（同 spec）。
+
 ## Webview 单页布局（SDI 与 Dock）
 
 - **SDI**：`panel.ts` 注入的 HTML 在 **单个** Webview 文档内排布：顶栏菜单、`mainRow`（左 Dock + 中央画布 + 右 Dock）、底栏状态栏；**一个标签页对应一份**当前脑图会话，中央画布为唯一主编辑客户区（非 MDI 子窗）。

@@ -25,7 +25,9 @@
 
 在 `mindmap_vscode/`：
 
-- 启动：`python run_web.py`（根路径 `/` 即脑图调试页；默认不修改 `package.json`；需要 bump 时加 `--bump-version`。热更新依赖编译与 watch。详见 `mindmap_vscode/README.md`）
+- 启动：`python run_web.py`（根路径 `/` 即脑图调试页；默认不修改 `package.json`；需要 bump 时加 `--bump-version`。启动前会编译并调用 `scripts/gen_web_dev_html.js` 生成 `out/web_dev.html`。热更新依赖编译与 watch。详见 `mindmap_vscode/README.md`）
+- **仅改模板或占位符、未跑 `run_web` 时**：可执行 `npm run gen:web-dev`（等价于带主机/端口的 `node scripts/gen_web_dev_html.js`），避免 `out/web_dev.html` 过期导致脚本地址未替换或 404。
+- **源码位置**：Webview **主逻辑**在 `media/webview-app.js`；`panel.ts` 以 HTML 壳与 `postMessage` 宿主侧为主（与 `02-physical/mindmap-vscode-extension/spec.md` 一致）。
 - 用于不经过 VSIX、在浏览器或 Simple Browser 中调试 Webview 同源模板；与扩展宿主能力（`acquireVsCodeApi`）不一致处以 README 说明为准。
 
 ## 依赖
