@@ -406,6 +406,12 @@ if (el && el.textContent) {
             dockBtnCollapse: 'Collapse',
             dockBtnMaximize: 'Maximize',
             dockBtnRestore: 'Restore',
+            dockBtnClose: 'Close',
+            menuShowDockFormat: 'Show Format dock',
+            menuShowDockIcon: 'Show Icon dock',
+            menuShowDockTheme: 'Show Mind map theme dock',
+            dockAreaRightAria: 'Right dock area',
+            htoolbarOverflowMore: 'More toolbar actions (overflow)',
             dockLblNodeId: 'Node ID',
             dockLblTopic: 'Content',
             dockLblFont: 'Font',
@@ -574,6 +580,12 @@ if (el && el.textContent) {
             dockBtnCollapse: '折叠',
             dockBtnMaximize: '最大化',
             dockBtnRestore: '还原',
+            dockBtnClose: '关闭',
+            menuShowDockFormat: '显示格式停靠窗口',
+            menuShowDockIcon: '显示图标停靠窗口',
+            menuShowDockTheme: '显示脑图主题停靠窗口',
+            dockAreaRightAria: '右侧停靠区域',
+            htoolbarOverflowMore: '更多工具栏操作（溢出）',
             dockLblNodeId: '节点 ID',
             dockLblTopic: '内容',
             dockLblFont: '字体',
@@ -726,9 +738,16 @@ if (el && el.textContent) {
           btnSaveAs: ['🖫', 'menuSaveAs', 'S', true]
         };
 
-        function applyHtoolbarLabels() {
-          for (const id of Object.keys(toolbarLabelMap)) {
-            const meta = toolbarLabelMap[id];
+        const toolbarOverflowLabelMap = {
+          htoolbarOvNew: ['＋', 'menuNew', 'N', false],
+          htoolbarOvOpen: ['📂', 'menuOpen', 'O', false],
+          htoolbarOvSave: ['💾', 'menuSave', 'S', false],
+          htoolbarOvSaveAs: ['🖫', 'menuSaveAs', 'S', true]
+        };
+
+        function applyToolbarButtonLabels(map) {
+          for (const id of Object.keys(map)) {
+            const meta = map[id];
             if (!meta) continue;
             const btn = document.getElementById(id);
             if (!btn) continue;
@@ -742,6 +761,11 @@ if (el && el.textContent) {
             btn.title = tip;
             btn.setAttribute('aria-label', tip);
           }
+        }
+
+        function applyHtoolbarLabels() {
+          applyToolbarButtonLabels(toolbarLabelMap);
+          applyToolbarButtonLabels(toolbarOverflowLabelMap);
         }
 
         /** 顶栏菜单项、菜单摘要、右键菜单与缩放按钮的悬停快捷键说明 */
@@ -767,6 +791,9 @@ if (el && el.textContent) {
           setTitle('menuCut', t('menuCut'), C('X'));
           setTitle('menuPaste', t('menuPaste'), C('V'));
           setTitle('menuToggleDock', t('menuToggleDock'), dockSc);
+          setTitle('menuShowDockFormat', t('menuShowDockFormat'));
+          setTitle('menuShowDockIcon', t('menuShowDockIcon'));
+          setTitle('menuShowDockTheme', t('menuShowDockTheme'));
           setTitle(
             'menuPromote',
             t('menuPromote'),
@@ -833,7 +860,11 @@ if (el && el.textContent) {
           const sumWindow = document.getElementById('sumWindow');
           if (sumWindow) {
             sumWindow.title =
-              (currentLang === 'zh' ? '窗口：' : 'Window: ') + fsSc + ' · ' + dockSc;
+              (currentLang === 'zh' ? '窗口：' : 'Window: ') +
+              fsSc +
+              ' · ' +
+              dockSc +
+              (currentLang === 'zh' ? '；可重新打开已关闭的停靠窗口' : '; reopen closed docks');
           }
           const sumView = document.getElementById('sumView');
           if (sumView) {
@@ -982,15 +1013,18 @@ if (el && el.textContent) {
         let formatDockMaximized = false;
         let iconDockMaximized = false;
         let themeDockMaximized = false;
+        let formatDockClosed = false;
+        let iconDockClosed = false;
+        let themeDockClosed = false;
 
         function applyDockMaximizeUi() {
           const df = document.getElementById('dockFormat');
           const di = document.getElementById('dockIcon');
           const dt = document.getElementById('dockJsmindTheme');
           if (!df || !di || !dt) return;
-          const fc = formatDockCollapsed;
-          const ic = iconDockCollapsed;
-          const tc = themeDockCollapsed;
+          const fc = formatDockCollapsed || formatDockClosed;
+          const ic = iconDockCollapsed || iconDockClosed;
+          const tc = themeDockCollapsed || themeDockClosed;
           df.classList.toggle('dock-maximized', formatDockMaximized && !fc);
           di.classList.toggle('dock-maximized', iconDockMaximized && !ic);
           dt.classList.toggle('dock-maximized', themeDockMaximized && !tc);
@@ -1045,9 +1079,68 @@ if (el && el.textContent) {
             mt.setAttribute('aria-label', mt.title);
             mt.textContent = r ? '❐' : '□';
           }
+          const ccf = document.getElementById('btnDockFormatClose');
+          const cci = document.getElementById('btnDockIconClose');
+          const cct = document.getElementById('btnDockJsmindThemeClose');
+          const closeTip = t('dockBtnClose');
+          if (ccf) {
+            ccf.title = closeTip;
+            ccf.setAttribute('aria-label', closeTip);
+          }
+          if (cci) {
+            cci.title = closeTip;
+            cci.setAttribute('aria-label', closeTip);
+          }
+          if (cct) {
+            cct.title = closeTip;
+            cct.setAttribute('aria-label', closeTip);
+          }
+        }
+
+        function applyFormatDockClosed(closed) {
+          formatDockClosed = closed;
+          const el = document.getElementById('dockFormat');
+          if (el) el.classList.toggle('dock-closed', closed);
+          if (closed) {
+            formatDockMaximized = false;
+          } else {
+            formatDockCollapsed = false;
+            if (el) el.classList.remove('collapsed');
+          }
+          applyDockMaximizeUi();
+          updateDockMaximizeButtons();
+        }
+
+        function applyIconDockClosed(closed) {
+          iconDockClosed = closed;
+          const el = document.getElementById('dockIcon');
+          if (el) el.classList.toggle('dock-closed', closed);
+          if (closed) {
+            iconDockMaximized = false;
+          } else {
+            iconDockCollapsed = false;
+            if (el) el.classList.remove('collapsed');
+          }
+          applyDockMaximizeUi();
+          updateDockMaximizeButtons();
+        }
+
+        function applyThemeDockClosed(closed) {
+          themeDockClosed = closed;
+          const el = document.getElementById('dockJsmindTheme');
+          if (el) el.classList.toggle('dock-closed', closed);
+          if (closed) {
+            themeDockMaximized = false;
+          } else {
+            themeDockCollapsed = false;
+            if (el) el.classList.remove('collapsed');
+          }
+          applyDockMaximizeUi();
+          updateDockMaximizeButtons();
         }
 
         function applyFormatDockCollapsed(collapsed) {
+          if (formatDockClosed) return;
           formatDockCollapsed = collapsed;
           const el = document.getElementById('dockFormat');
           if (el) el.classList.toggle('collapsed', collapsed);
@@ -1057,6 +1150,7 @@ if (el && el.textContent) {
         }
 
         function applyIconDockCollapsed(collapsed) {
+          if (iconDockClosed) return;
           iconDockCollapsed = collapsed;
           const el = document.getElementById('dockIcon');
           if (el) el.classList.toggle('collapsed', collapsed);
@@ -1066,6 +1160,7 @@ if (el && el.textContent) {
         }
 
         function applyThemeDockCollapsed(collapsed) {
+          if (themeDockClosed) return;
           themeDockCollapsed = collapsed;
           const el = document.getElementById('dockJsmindTheme');
           if (el) el.classList.toggle('collapsed', collapsed);
@@ -1119,6 +1214,9 @@ if (el && el.textContent) {
           byId('menuToggle', t('menuToggle'));
           byId('menuExpandAll', t('menuExpandAll'));
           byId('menuToggleDock', t('menuToggleDock'));
+          byId('menuShowDockFormat', t('menuShowDockFormat'));
+          byId('menuShowDockIcon', t('menuShowDockIcon'));
+          byId('menuShowDockTheme', t('menuShowDockTheme'));
           byId('menuInsertImage', t('menuInsertImage'));
           byId('menuInsertText', t('menuInsertText'));
           byId('menuInsertWhiteboard', t('menuInsertWhiteboard'));
@@ -1197,6 +1295,13 @@ if (el && el.textContent) {
           byId('errorDialogConfirm', t('dialogConfirm'));
           const htb = document.getElementById('htoolbar');
           if (htb) htb.setAttribute('aria-label', t('htoolbarLabel'));
+          const drs = document.getElementById('dockRightStack');
+          if (drs) drs.setAttribute('aria-label', t('dockAreaRightAria'));
+          const hob = document.getElementById('htoolbarOverflowBtn');
+          if (hob) {
+            hob.setAttribute('aria-label', t('htoolbarOverflowMore'));
+            hob.title = t('htoolbarOverflowMore');
+          }
           byId('appTitleName', t('appTitlePrimary'));
           byId('appTitleSub', t('appTitleSecondary'));
           const appTitleBarEl = document.getElementById('appTitleBar');
@@ -1234,6 +1339,7 @@ if (el && el.textContent) {
           applyMenuBarSummaryAndContextShortcutTitles();
           updateDockMaximizeButtons();
           applySaveTrafficLight(saveTrafficLightState);
+          requestAnimationFrame(mmUpdateHtoolbarOverflowVisibility);
         }
 
         function setStatus(text, isError) {
@@ -4325,16 +4431,91 @@ if (el && el.textContent) {
           throw new Error('unsupported action: ' + action);
         }
 
-        bindByIdClick('btnNew', function () {
+        function mmCloseHtoolbarOverflowMenu() {
+          const m = document.getElementById('htoolbarOverflowMenu');
+          const b = document.getElementById('htoolbarOverflowBtn');
+          if (m) {
+            m.classList.add('hidden');
+            m.setAttribute('aria-hidden', 'true');
+          }
+          if (b) b.setAttribute('aria-expanded', 'false');
+        }
+
+        function mmOpenHtoolbarOverflowMenu() {
+          const m = document.getElementById('htoolbarOverflowMenu');
+          const b = document.getElementById('htoolbarOverflowBtn');
+          if (!m || !b || b.classList.contains('hidden')) return;
+          const r = b.getBoundingClientRect();
+          m.style.top = Math.round(r.bottom + 4) + 'px';
+          m.style.left = Math.round(Math.max(8, r.right - 220)) + 'px';
+          m.style.minWidth = Math.max(200, r.width) + 'px';
+          m.classList.remove('hidden');
+          m.setAttribute('aria-hidden', 'false');
+          b.setAttribute('aria-expanded', 'true');
+        }
+
+        function mmUpdateHtoolbarOverflowVisibility() {
+          const track = document.getElementById('htoolbarTrack');
+          const inner = document.getElementById('htoolbar');
+          const ovBtn = document.getElementById('htoolbarOverflowBtn');
+          if (!track || !inner || !ovBtn) return;
+          const overflow = inner.scrollWidth > track.clientWidth + 2;
+          ovBtn.classList.toggle('hidden', !overflow);
+          if (!overflow) mmCloseHtoolbarOverflowMenu();
+        }
+
+        function mmBindHtoolbarOverflowUi() {
+          const track = document.getElementById('htoolbarTrack');
+          const ovBtn = document.getElementById('htoolbarOverflowBtn');
+          const menu = document.getElementById('htoolbarOverflowMenu');
+          if (track && typeof ResizeObserver !== 'undefined') {
+            const ro = new ResizeObserver(function () {
+              mmUpdateHtoolbarOverflowVisibility();
+            });
+            ro.observe(track);
+            const inner = document.getElementById('htoolbar');
+            if (inner) ro.observe(inner);
+          }
+          elOn(window, 'resize', mmUpdateHtoolbarOverflowVisibility);
+          if (ovBtn) {
+            elOn(ovBtn, 'click', function (ev) {
+              ev.stopPropagation();
+              const open = menu && !menu.classList.contains('hidden');
+              if (open) mmCloseHtoolbarOverflowMenu();
+              else mmOpenHtoolbarOverflowMenu();
+            });
+          }
+          elOn(
+            document,
+            'click',
+            function (ev) {
+              if (!menu || menu.classList.contains('hidden')) return;
+              const t = ev.target;
+              if (t && ovBtn && (t === ovBtn || ovBtn.contains(t))) return;
+              if (t && menu.contains(t)) return;
+              mmCloseHtoolbarOverflowMenu();
+            },
+            true
+          );
+          requestAnimationFrame(mmUpdateHtoolbarOverflowVisibility);
+        }
+
+        function toolbarActionNew() {
+          mmCloseHtoolbarOverflowMenu();
           setStatus(currentLang === 'zh' ? '正在新建脑图...' : 'Creating new mindmap...');
           vscode.postMessage({ type: 'mindmap:requestNew' });
-        });
-        bindByIdClick('btnOpen', function () {
+        }
+        function toolbarActionOpen() {
+          mmCloseHtoolbarOverflowMenu();
           setStatus(currentLang === 'zh' ? '正在打开脑图...' : 'Opening mindmap...');
           vscode.postMessage({ type: 'mindmap:requestOpen' });
-        });
-        bindByIdClick('btnSave', doSave);
-        bindByIdClick('btnSaveAs', function () {
+        }
+        function toolbarActionSave() {
+          mmCloseHtoolbarOverflowMenu();
+          doSave();
+        }
+        function toolbarActionSaveAs() {
+          mmCloseHtoolbarOverflowMenu();
           try {
             setStatus(currentLang === 'zh' ? '正在另存为...' : 'Saving as...');
             vscode.postMessage({ type: 'mindmap:requestSaveAs', tree: getTreeForFileOps() });
@@ -4342,7 +4523,37 @@ if (el && el.textContent) {
             const msg = e && e.message ? e.message : String(e);
             notifyInvalidAction((currentLang === 'zh' ? '另存为失败：' : 'Save As failed: ') + msg);
           }
+        }
+
+        bindByIdClick('btnNew', toolbarActionNew);
+        bindByIdClick('btnOpen', toolbarActionOpen);
+        bindByIdClick('btnSave', toolbarActionSave);
+        bindByIdClick('btnSaveAs', toolbarActionSaveAs);
+        bindByIdClick('htoolbarOvNew', toolbarActionNew);
+        bindByIdClick('htoolbarOvOpen', toolbarActionOpen);
+        bindByIdClick('htoolbarOvSave', toolbarActionSave);
+        bindByIdClick('htoolbarOvSaveAs', toolbarActionSaveAs);
+
+        bindByIdClick('btnDockFormatClose', function () {
+          applyFormatDockClosed(true);
         });
+        bindByIdClick('btnDockIconClose', function () {
+          applyIconDockClosed(true);
+        });
+        bindByIdClick('btnDockJsmindThemeClose', function () {
+          applyThemeDockClosed(true);
+        });
+        bindByIdClick('menuShowDockFormat', function () {
+          applyFormatDockClosed(false);
+        });
+        bindByIdClick('menuShowDockIcon', function () {
+          applyIconDockClosed(false);
+        });
+        bindByIdClick('menuShowDockTheme', function () {
+          applyThemeDockClosed(false);
+        });
+
+        mmBindHtoolbarOverflowUi();
 
         // Ensure canvas can receive keyboard focus.
         elOn(canvasWrapEl, 'mousedown', function (e) {

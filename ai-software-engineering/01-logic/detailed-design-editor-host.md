@@ -40,8 +40,8 @@
 ## Webview 单页布局（SDI 与 Dock）
 
 - **SDI**：`panel.ts` 注入的 HTML 在 **单个** Webview 文档内排布：顶栏菜单、`mainRow`（左 Dock + 中央画布 + 右 Dock）、底栏状态栏；**一个标签页对应一份**当前脑图会话，中央画布为唯一主编辑客户区（非 MDI 子窗）。
-- **左 Dock**（`#dockLeft`）：**缘条** `dock-edge`（折叠柄）与 **显示区** `dock-display`（新建/打开/保存/另存为等）为兄弟节点；与文件/会话入口强相关。
-- **右 Dock**（`#dockRight`）：**显示区** + **缘条**（缘条贴窗口最右）；**多功能**——属性与扩展能力（Format / Icon 等 Tab，可继续加 Tab 或分区），与左侧语义分离。
+- **Toolbar**：页内 **`#htoolbar`**（在 **Dock Area 外**），菜单栏之下、主行之上；分隔条、窄宽度时 **溢出按钮 + 悬浮菜单**（与 `window-gui-documentation.mdc` Toolbar 专节一致）。
+- **右 Dock Area**（`#dockRightStack`，`dock-area`）：多个 **Dock**；每 Dock 内 **`dock-view` / `dock-fold-strip`**（实现类名仍为 `dock-display` / `dock-edge`）兄弟排列，DOM 顺序 **客户区 → Dock View → 折叠按钮区域（贴右缘）**；标题栏 **折叠 / 最大化 / 关闭**，**窗口** 菜单可重新打开被关闭的 Dock。
 - 左右 Dock 的折叠与 `mindmapVscode.toggleDock`（最大化编辑区）联动策略见扩展 README 与 `panel.ts`。
 
 ## 多标签与复用

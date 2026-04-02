@@ -2125,16 +2125,95 @@ export class MindmapPanel {
         color: var(--mm-text-muted);
         cursor: not-allowed;
       }
-      /* 主菜单下方的横向工具栏（基础文件操作） */
-      .htoolbar {
+      /* 主菜单下方 Toolbar：在 Dock Area 外；含轨道 + 可选溢出「更多」按钮（window-gui-documentation.mdc） */
+      .htoolbar-host {
         flex: 0 0 auto;
         display: flex;
         flex-direction: row;
-        flex-wrap: wrap;
+        align-items: stretch;
+        border-bottom: 1px solid var(--mm-border);
+        background: var(--mm-bg-toolbar);
+      }
+      .htoolbar-track {
+        flex: 1 1 auto;
+        min-width: 0;
+        overflow: hidden;
+        display: flex;
+        align-items: stretch;
+      }
+      .htoolbar {
+        flex: 1 1 auto;
+        min-width: 0;
+        display: flex;
+        flex-direction: row;
+        flex-wrap: nowrap;
         align-items: center;
         gap: var(--mm-space-2);
         padding: var(--mm-space-2) var(--mm-space-3);
-        border-bottom: 1px solid var(--mm-border);
+        background: transparent;
+      }
+      .htoolbar-sep {
+        flex: 0 0 1px;
+        align-self: stretch;
+        width: 1px;
+        min-height: 24px;
+        margin: 6px 2px;
+        background: var(--mm-border-strong);
+        opacity: 0.85;
+      }
+      .htoolbar-overflow-btn {
+        flex: 0 0 36px;
+        width: 36px;
+        min-width: 36px;
+        align-self: center;
+        margin: var(--mm-space-2) var(--mm-space-2) var(--mm-space-2) 0;
+        height: 36px;
+        border-radius: var(--mm-radius-md);
+        border: 1px solid var(--mm-border-strong);
+        background: var(--mm-bg-surface);
+        cursor: pointer;
+        font-size: 1.125rem;
+        font-weight: 700;
+        line-height: 1;
+        color: var(--mm-text-secondary);
+        box-shadow: var(--mm-shadow-sm);
+      }
+      .htoolbar-overflow-btn:hover {
+        background: var(--mm-bg-subtle);
+      }
+      .htoolbar-overflow-btn.hidden {
+        display: none !important;
+      }
+      .htoolbar-overflow-menu {
+        position: fixed;
+        z-index: 45;
+        min-width: 200px;
+        padding: var(--mm-space-2);
+        display: flex;
+        flex-direction: column;
+        gap: var(--mm-space-1);
+        background: var(--mm-bg-surface);
+        border: 1px solid var(--mm-border);
+        border-radius: var(--mm-radius-lg);
+        box-shadow: var(--mm-shadow-md);
+      }
+      .htoolbar-overflow-menu.hidden {
+        display: none !important;
+      }
+      .htoolbar-overflow-item {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: var(--mm-space-2);
+        padding: var(--mm-space-2) var(--mm-space-3);
+        border: 1px solid var(--mm-border-strong);
+        border-radius: var(--mm-radius-md);
+        background: var(--mm-bg-subtle);
+        cursor: pointer;
+        font-size: var(--mm-font-ui);
+        color: var(--mm-text);
+      }
+      .htoolbar-overflow-item:hover {
         background: var(--mm-bg-toolbar);
       }
       .htoolbar button {
@@ -2160,7 +2239,8 @@ export class MindmapPanel {
         border-color: var(--mm-border-strong);
       }
 
-      .dock-edge {
+      .dock-edge,
+      .dock-fold-strip {
         flex: 0 0 28px;
         width: 28px;
         min-width: 28px;
@@ -2173,6 +2253,14 @@ export class MindmapPanel {
         border-right: none;
         border-left: 1px solid var(--mm-border-strong);
         background: var(--mm-bg-dock-edge);
+      }
+      /* 展开态 Dock Button 与折叠态区分颜色（停靠按钮始终可见） */
+      .dock-right:not(.collapsed):not(.dock-closed) .dock-edge-btn {
+        background: color-mix(in srgb, var(--mm-accent, #2563eb) 18%, var(--mm-bg-subtle));
+        border-color: var(--mm-border-strong);
+      }
+      html[data-mm-ui='dark'] .dock-right:not(.collapsed):not(.dock-closed) .dock-edge-btn {
+        background: color-mix(in srgb, #60a5fa 22%, var(--mm-bg-subtle));
       }
       .dock-edge-btn {
         box-sizing: border-box;
@@ -2397,8 +2485,9 @@ export class MindmapPanel {
         word-break: break-word;
       }
 
-      /* 右侧 Dock 容器：纵向叠放多个 Dock；折叠时缘条在右侧上下排列 */
-      .dock-right-stack {
+      /* 右侧 Dock Area：纵向叠放多个 Dock；折叠时折叠按钮区域在右侧上下排列 */
+      .dock-right-stack,
+      .dock-area.mm-dock-area-right {
         flex: 0 0 auto;
         display: flex;
         flex-direction: column;
@@ -2422,6 +2511,9 @@ export class MindmapPanel {
         min-height: 0;
         min-width: 0;
         background: var(--mm-bg-dock);
+      }
+      .dock-right.dock-closed {
+        display: none !important;
       }
       /* 折叠后整行只占缘条宽度，并靠栈的右侧（窗口右缘），避免缘条漂在列中间 */
       .dock-right-stack .dock-right.collapsed {
@@ -3323,6 +3415,9 @@ export class MindmapPanel {
       <details>
         <summary id="sumWindow">Window</summary>
         <div class="menuItems">
+          <button type="button" id="menuShowDockFormat">Show Format dock</button>
+          <button type="button" id="menuShowDockIcon">Show Icon dock</button>
+          <button type="button" id="menuShowDockTheme">Show Mind map theme dock</button>
           <button id="menuToggleDock">Mindmap: Toggle Dock Maximized</button>
         </div>
       </details>
@@ -3350,11 +3445,40 @@ export class MindmapPanel {
       </details>
     </div>
 
-    <div class="htoolbar" id="htoolbar" role="toolbar" aria-label="Toolbar">
-      <button type="button" id="btnNew">＋</button>
-      <button type="button" id="btnOpen">📂</button>
-      <button type="button" id="btnSave">💾</button>
-      <button type="button" id="btnSaveAs">🖫</button>
+    <div class="htoolbar-host">
+      <div class="htoolbar-track" id="htoolbarTrack">
+        <div class="htoolbar" id="htoolbar" role="toolbar" aria-label="Toolbar">
+          <button type="button" id="btnNew">＋</button>
+          <span class="htoolbar-sep" role="separator" aria-hidden="true"></span>
+          <button type="button" id="btnOpen">📂</button>
+          <span class="htoolbar-sep" role="separator" aria-hidden="true"></span>
+          <button type="button" id="btnSave">💾</button>
+          <span class="htoolbar-sep" role="separator" aria-hidden="true"></span>
+          <button type="button" id="btnSaveAs">🖫</button>
+        </div>
+      </div>
+      <button
+        type="button"
+        id="htoolbarOverflowBtn"
+        class="htoolbar-overflow-btn hidden"
+        aria-label="More toolbar actions"
+        aria-haspopup="true"
+        aria-expanded="false"
+        aria-controls="htoolbarOverflowMenu"
+      >
+        ▸
+      </button>
+    </div>
+    <div
+      class="htoolbar-overflow-menu hidden"
+      id="htoolbarOverflowMenu"
+      role="menu"
+      aria-hidden="true"
+    >
+      <button type="button" class="htoolbar-overflow-item" id="htoolbarOvNew">＋</button>
+      <button type="button" class="htoolbar-overflow-item" id="htoolbarOvOpen">📂</button>
+      <button type="button" class="htoolbar-overflow-item" id="htoolbarOvSave">💾</button>
+      <button type="button" class="htoolbar-overflow-item" id="htoolbarOvSaveAs">🖫</button>
     </div>
 
     <div class="mainRow">
@@ -3396,14 +3520,15 @@ export class MindmapPanel {
           ></div>
         </div>
       </div>
-      <div class="dock-right-stack" id="dockRightStack">
-        <aside class="dock dock-right" id="dockFormat" aria-label="Format dock">
-          <div class="dock-display">
+      <div class="dock-right-stack dock-area mm-dock-area-right" id="dockRightStack" aria-label="Right dock area">
+        <aside class="dock dock-right" id="dockFormat" data-mm-dock="format" aria-label="Format dock">
+          <div class="dock-display dock-view">
             <div class="dock-titlebar">
               <span class="dock-title" id="dockFormatTitle">Format</span>
               <div class="dock-title-actions">
                 <button type="button" class="dock-title-btn" id="btnDockFormatCollapse" title="Collapse">−</button>
                 <button type="button" class="dock-title-btn" id="btnDockFormatMaximize" title="Maximize">□</button>
+                <button type="button" class="dock-title-btn" id="btnDockFormatClose" title="Close">×</button>
               </div>
             </div>
             <div class="attrContent" id="dockFormatBody">
@@ -3445,17 +3570,18 @@ export class MindmapPanel {
               </div>
             </div>
           </div>
-          <div class="dock-edge">
+          <div class="dock-edge dock-fold-strip">
             <button type="button" id="btnToggleDockFormat" class="dock-edge-btn" title="Format">⚙</button>
           </div>
         </aside>
-        <aside class="dock dock-right" id="dockIcon" aria-label="Icon dock">
-          <div class="dock-display">
+        <aside class="dock dock-right" id="dockIcon" data-mm-dock="icon" aria-label="Icon dock">
+          <div class="dock-display dock-view">
             <div class="dock-titlebar">
               <span class="dock-title" id="dockIconTitle">Icon</span>
               <div class="dock-title-actions">
                 <button type="button" class="dock-title-btn" id="btnDockIconCollapse" title="Collapse">−</button>
                 <button type="button" class="dock-title-btn" id="btnDockIconMaximize" title="Maximize">□</button>
+                <button type="button" class="dock-title-btn" id="btnDockIconClose" title="Close">×</button>
               </div>
             </div>
             <div class="attrContent" id="dockIconBody">
@@ -3463,24 +3589,25 @@ export class MindmapPanel {
               <div class="dock-icon-grid" id="dockIconGrid"></div>
             </div>
           </div>
-          <div class="dock-edge">
+          <div class="dock-edge dock-fold-strip">
             <button type="button" id="btnToggleDockIcon" class="dock-edge-btn" title="Icon">🖼</button>
           </div>
         </aside>
-        <aside class="dock dock-right" id="dockJsmindTheme" aria-label="Mind map theme dock">
-          <div class="dock-display">
+        <aside class="dock dock-right" id="dockJsmindTheme" data-mm-dock="theme" aria-label="Mind map theme dock">
+          <div class="dock-display dock-view">
             <div class="dock-titlebar">
               <span class="dock-title" id="dockJsmindThemeTitle">Mind map theme</span>
               <div class="dock-title-actions">
                 <button type="button" class="dock-title-btn" id="btnDockJsmindThemeCollapse" title="Collapse">−</button>
                 <button type="button" class="dock-title-btn" id="btnDockJsmindThemeMaximize" title="Maximize">□</button>
+                <button type="button" class="dock-title-btn" id="btnDockJsmindThemeClose" title="Close">×</button>
               </div>
             </div>
             <div class="attrContent" id="dockJsmindThemeBody">
               <div class="dock-jsmind-theme-grid" id="dockJsmindThemeGrid"></div>
             </div>
           </div>
-          <div class="dock-edge">
+          <div class="dock-edge dock-fold-strip">
             <button type="button" id="btnToggleDockJsmindTheme" class="dock-edge-btn" title="Mind map theme">🎨</button>
           </div>
         </aside>

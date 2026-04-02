@@ -79,12 +79,14 @@
 
 ## UI 设计
 
-### 壳层与分区（SDI + Dock）
+### 壳层与分区（SDI + Toolbar + Dock Area）
 
 - **SDI（页面内）**：每个脑图标签对应 **一个** Webview 页面；在页面内是 **单文档界面**——**中央**为主画布客户区，**非** MDI 多子窗口。
-- **左侧 Dock**：**基础功能**区为独立 **Dock**（`#dockLeft`）：**缘条** `dock-edge` 仅放折叠/展开柄；**显示区** `dock-display` 放新建/打开/保存/另存为等按钮（与 `window-gui-documentation.mdc` 中缘条/显示区兄弟关系一致）；可折叠为窄图标列。
-- **右侧 Dock 栈**（`#dockRightStack`）：多个 **Dock** 并列（**格式 Format**、**图标 Icon**、**脑图主题 Mind map theme** 等），各自 **显示区 + 缘条**，缘条贴窗口最右（DOM 顺序：`客户区 | 显示区 | 缘条`）；可分别折叠/展开。
+- **Toolbar（`#htoolbar` + `#htoolbarTrack`）**：位于 **菜单栏与主行之间**，在 **Dock Area 外**；默认图标按钮，按钮间有 **分隔条**；主行变窄时若轨道容纳不下，右侧出现 **溢出按钮（▸）**，点击弹出 **悬浮菜单** 重复四项文件操作（与 `.cursor/rules/window-gui-documentation.mdc` 中 Toolbar 专节一致）。
+- **右侧 Dock Area**（`#dockRightStack`，类名含 `dock-area mm-dock-area-right`）：多个 **Dock（停靠窗口）** 纵向叠放（格式 / 图标 / 脑图主题）。每个 Dock 内 **`dock-view`（原 `dock-display`）** 与 **`dock-fold-strip`（原 `dock-edge`）** 为兄弟节点；**Dock Button** 在折叠按钮区域内，**展开/折叠用背景色区分**；标题栏含 **折叠、最大化、关闭**；**关闭**后可在 **窗口** 菜单中 **重新显示** 对应 Dock。
 - **中间**：`jsMind` 主画布；**顶部**为页内菜单栏；**底部**为页内状态栏（含日志等）。
+
+> **未实现（规则中的进阶项）**：Toolbar 四边停靠与浮动、Dock 在多个 Dock Area 间拖动与浮动、左侧独立 Dock Area 等；当前仅右侧一条 Dock Area + 顶区 Toolbar。
 
 当前界面采用“xmind 风格”控制逻辑：结构增删/移动按钮在所有支持格式下都已隐藏（但保留快捷键交互，如 `Enter/Tab/粘贴文本` 建节点）。
 默认状态（明确）：**左侧**基础 Dock 与 **右侧**多功能 Dock 在打开编辑器时即为最小化（缩小）模式，需手动展开后才显示完整内容。

@@ -8,8 +8,8 @@
 | Webview 主脚本（jsMind、画布、Dock 交互、`relayoutMindAfterVisuals`、`resetZoom`/`centerRoot`/`fitAll`/`zoomByStep` 等） | `mindmap_vscode/media/webview-app.js` |
 | Webview 主题早置（`data-mm-ui`） | `mindmap_vscode/media/webview-theme-init.js` |
 | 本地 HTTP 调试页热更新（轮询 `web_dev_meta.json`） | `mindmap_vscode/media/web-dev-livereload.js`（仅 `out/web_dev.html` 引用） |
-| 左侧基础 Dock（`#dockLeft`：`dock-edge` / `dock-display`） | `mindmap_vscode/src/panel.ts`（模板 HTML + 内联样式） |
-| 右侧多功能 Dock（`#dockRight`：`dock-display` / `dock-edge`） | `mindmap_vscode/src/panel.ts`（模板 HTML + 内联样式） |
+| 页内 Toolbar（`htoolbar-host` / `htoolbarTrack` / `htoolbar`、溢出菜单 `htoolbarOverflowMenu`） | `mindmap_vscode/src/panel.ts`（模板 + 样式）；`mindmap_vscode/media/webview-app.js`（`mmUpdateHtoolbarOverflowVisibility`、`toolbarAction*`） |
+| 右侧 Dock Area（`#dockRightStack`、`dock-area`；各 Dock：`dock-view`+`dock-fold-strip`、关闭与 `dock-closed`） | `mindmap_vscode/src/panel.ts`；`mindmap_vscode/media/webview-app.js`（`apply*DockClosed`、`Window` 菜单 `menuShowDock*`） |
 | CustomTextEditor | `mindmap_vscode/src/mindmapCustomTextEditor.ts` |
 | 视图类型常量 | `mindmap_vscode/src/mindmapEditorViewType.ts` |
 | Cursor `mcp.json` 合并 | `mindmap_vscode/src/mcpCursorConfig.ts` |
