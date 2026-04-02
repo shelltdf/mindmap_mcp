@@ -186,7 +186,7 @@ alwaysApply: true
   - 画布变更调用 `markContentDirty()` → 置内部 `contentDirty` → 向宿主 `postMessage({ type: 'mindmap:edited' })`；保存成功路径调用 `setContentClean()`。  
   - `beforeunload`：若 `contentDirty` 则拦截关闭/刷新（浏览器标准确认框）。  
   - 页内 **`#statusbarSaveLight`**：`applySaveTrafficLight(light)` 根据 `'green' | 'yellow' | 'red'` 切换样式与 `title`（绿=已保存、黄=有未保存修改、红=未落盘或高风险状态文案以 i18n 为准）。  
-  - **`#mainRowSplitter`**：右侧三 Dock **全为折叠或关闭**时 **`updateMainRowSplitterInteractable()`** 为分割条加 **`mm-main-row-splitter-inactive`**（不呈现/不可拖）；拖拽中若变为全折叠则由 **`mm-main-row-splitter-force-end-drag`** 结束拖拽。
+  - **`#mainRowSplitter`**：右侧三 Dock **全为折叠或关闭**时 **`updateMainRowSplitterInteractable()`** 为 **`#dockRightStack`** 加 **`mm-dock-stack-fold-only`**（**`#dockAreaView` 不显示**，仅 **缘条**），并为分割条加 **`mm-main-row-splitter-inactive`**（透明、不可拖，**保留与可拖时相同的水平占位**以免主区与 Dock 宽度跳动）；拖拽中若变为全折叠则由 **`mm-main-row-splitter-force-end-drag`** 结束拖拽。
 
 - **VS Code / Cursor 扩展**（`mindmap_vscode/src/panel.ts`）  
   - `MindmapPanel._dirty` 与 **`mindmap:edited`** 联动；绑定 `TextDocument` 时通过同步逻辑使 **`document.isDirty`** 与工作台「脏标签」一致。  
