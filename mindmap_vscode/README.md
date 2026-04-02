@@ -40,6 +40,7 @@
   - 开发运行（默认）：`python run.py`
   - 桌面打包（Windows 默认）：`python run.py --build-desktop --target win`
   - 其他平台目标：`--target linux` / `--target mac`（建议在对应系统构建）
+  - **关闭窗口**：套壳内**不**用页面 **`beforeunload` 拦截**（否则在 Electron 下易导致标题栏/系统 **关闭** 无响应）；有未保存修改时由 **`desktop/main.js`** 的 **`BrowserWindow` `close`** 事件读取 **`window.mmGetContentDirty()`**（`webview-app.js` 在 Electron 环境暴露）并弹出 **「取消 / 仍要关闭」**。
 - **网页调试模式（本地 HTTP，与扩展 Webview 同源模板）**
   - 启动：`python run_web.py`（默认 `--host 127.0.0.1`、`--port 8765`）
   - **热更新**：默认后台运行 `npm run watch`（`tsc --watch`），保存 `src` 后自动编译；`panel.ts` 变更会重生成 `out/web_dev.html`；调试页会轮询 `out/web_dev_meta.json` 并自动刷新。`tsc --watch` 的终端输出会写入 **`out/web_dev_tsc_watch.log`**，避免刷屏盖住访问地址。若只要单次编译、手动刷新浏览器，可加 **`--no-watch`**。

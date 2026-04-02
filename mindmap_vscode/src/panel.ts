@@ -390,12 +390,14 @@ export class MindmapPanel {
       if (e.document !== document) return;
       if (instance._muteDocSync) return;
       instance._schedulePushTreeFromDocument();
+      instance._postSaveTrafficLightToWebview();
     });
     instance._disposables.push(subDoc);
 
     const subSave = vscode.workspace.onDidSaveTextDocument((doc) => {
       if (doc.uri.toString() !== document.uri.toString()) return;
       void instance._panel.webview.postMessage({ type: 'mindmap:savedOk' });
+      instance._postSaveTrafficLightToWebview();
     });
     instance._disposables.push(subSave);
   }
@@ -545,6 +547,7 @@ export class MindmapPanel {
       if (clearPending) {
         this._pendingDocSyncFromWebview = false;
       }
+      this._postSaveTrafficLightToWebview();
     }
   }
 
@@ -998,12 +1001,14 @@ export class MindmapPanel {
       if (this._textDocument) {
         this._pendingDocSyncFromWebview = true;
         this._scheduleSyncDocumentFromWebview();
+        this._postSaveTrafficLightToWebview();
         return;
       }
       if (!this._dirty) {
         this._dirty = true;
         this._applyTitle();
       }
+      this._postSaveTrafficLightToWebview();
       return;
     }
 
@@ -1197,7 +1202,10 @@ export class MindmapPanel {
   /** 当前编辑器相对磁盘/缓冲区：黄=脏，红=未落盘且干净，绿=已保存（发到 webview 底部状态栏右侧圆点） */
   private _computeThisPanelSaveLight(): 'red' | 'yellow' | 'green' {
     const doc = this._textDocument;
-    const dirty = this._dirty || doc?.isDirty === true;
+    const pendingSync =
+      !!doc &&
+      (this._pendingDocSyncFromWebview || this._pendingWebviewToDocTimer !== undefined);
+    const dirty = this._dirty || doc?.isDirty === true || pendingSync;
     if (dirty) {
       return 'yellow';
     }
@@ -3223,6 +3231,7 @@ export class MindmapPanel {
         align-items: center;
         gap: var(--mm-space-3);
         flex-shrink: 0;
+        cursor: default;
       }
       .statusbarSaveLight {
         width: 8px;
@@ -3871,8 +3880,8 @@ export class MindmapPanel {
         </div>
       </div>
     </div>
-    <div class="statusbar statusbarClickable" id="statusbar">
-      <div class="statusbarLeft">
+    <div class="statusbar" id="statusbar">
+      <div class="statusbarLeft statusbarClickable" id="statusbarLeft">
         <span id="statusIcon" class="statusIcon">⛔</span>
         <span id="statusbarText">就绪</span>
       </div>

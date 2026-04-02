@@ -94,6 +94,11 @@ function sendHostMessage(msg) {
   void mainWindow.webContents.executeJavaScript(js).catch(() => {});
 }
 
+/** 与 VS Code 扩展一致：页面内三色灯需知当前是否已关联磁盘路径 */
+function pushHostFilePathToRenderer() {
+  sendHostMessage({ type: 'mindmap:hostFilePath', path: currentFilePath || '' });
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1360,
@@ -115,6 +120,9 @@ function createWindow() {
   fs.mkdirSync(path.dirname(htmlPath), { recursive: true });
   fs.writeFileSync(htmlPath, html, 'utf8');
   void mainWindow.loadFile(htmlPath);
+  mainWindow.webContents.once('did-finish-load', () => {
+    pushHostFilePathToRenderer();
+  });
 
   // Toggle native menu bar only when explicitly needed.
   // - Windows/Linux: Alt still reveals it temporarily (auto-hide behavior).
@@ -130,6 +138,39 @@ function createWindow() {
     const next = !mainWindow.isMenuBarVisible();
     mainWindow.setAutoHideMenuBar(!next);
     mainWindow.setMenuBarVisibility(next);
+  });
+
+  /** 避免页面 beforeunload 拦截导致关闭无响应；脏文档时由主进程确认后再关 */
+  let closeConfirmed = false;
+  mainWindow.on('close', (e) => {
+    if (closeConfirmed) return;
+    e.preventDefault();
+    void (async () => {
+      let dirty = false;
+      try {
+        dirty = await mainWindow.webContents.executeJavaScript(
+          'Boolean(window.mmGetContentDirty && window.mmGetContentDirty())'
+        );
+      } catch (_) {}
+      if (!dirty) {
+        closeConfirmed = true;
+        mainWindow.close();
+        return;
+      }
+      const { response } = await dialog.showMessageBox(mainWindow, {
+        type: 'warning',
+        buttons: ['取消', '仍要关闭'],
+        defaultId: 0,
+        cancelId: 0,
+        noLink: true,
+        title: 'Mindmap',
+        message:
+          '当前脑图有未保存的修改。关闭窗口将丢弃这些修改。\n\n请先使用「文件 → 保存」若需保留。'
+      });
+      if (response !== 1) return;
+      closeConfirmed = true;
+      mainWindow.close();
+    })();
   });
 
   // Right-click on the top area to toggle native menu visibility.
@@ -229,6 +270,7 @@ ipcMain.on('vscode:postMessage', async (_evt, msg) => {
     currentExt = ext;
     sendHostMessage({ type: 'mindmap:setTree', tree, ext });
     sendHostMessage({ type: 'mindmap:savedOk' });
+    pushHostFilePathToRenderer();
     return;
   }
 
@@ -237,6 +279,7 @@ ipcMain.on('vscode:postMessage', async (_evt, msg) => {
     currentExt = 'mmd';
     sendHostMessage({ type: 'mindmap:setTree', tree: defaultTree(), ext: currentExt });
     sendHostMessage({ type: 'mindmap:savedOk' });
+    pushHostFilePathToRenderer();
     return;
   }
 
@@ -257,6 +300,7 @@ ipcMain.on('vscode:postMessage', async (_evt, msg) => {
     const text = serializeByExt(tree, currentExt);
     fs.writeFileSync(currentFilePath, text, 'utf8');
     sendHostMessage({ type: 'mindmap:savedOk' });
+    pushHostFilePathToRenderer();
     return;
   }
 
@@ -275,6 +319,7 @@ ipcMain.on('vscode:postMessage', async (_evt, msg) => {
     const text = serializeByExt(tree, currentExt);
     fs.writeFileSync(currentFilePath, text, 'utf8');
     sendHostMessage({ type: 'mindmap:savedOk' });
+    pushHostFilePathToRenderer();
     return;
   }
 

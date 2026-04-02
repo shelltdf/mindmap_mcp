@@ -185,7 +185,7 @@ alwaysApply: true
 - **共用页面**（`mindmap_vscode/media/webview-app.js`）  
   - 画布变更调用 `markContentDirty()` → 置内部 `contentDirty` → 向宿主 `postMessage({ type: 'mindmap:edited' })`；保存成功路径调用 `setContentClean()`。  
   - `beforeunload`：若 `contentDirty` 则拦截关闭/刷新（浏览器标准确认框）。  
-  - 页内 **`#statusbarSaveLight`**：`applySaveTrafficLight(light)` 根据 `'green' | 'yellow' | 'red'` 切换样式与 `title`（绿=已保存、黄=有未保存修改、红=未落盘或高风险状态文案以 i18n 为准）。  
+  - 页内 **`#statusbarSaveLight`**：`applySaveTrafficLight(light)` 根据 `'green' | 'yellow' | 'red'` 切换样式与 `title`。**VS Code** 由宿主 **`mindmap:saveTrafficLight`** 驱动；**浏览器 / Electron** 由 **`refreshLocalSaveTrafficLight()`**（与扩展语义对齐：黄=脏、红=干净但未关联磁盘、绿=干净且已关联路径）驱动，并接收 **`mindmap:hostFilePath`**（Electron 主进程）或浏览器内 **`localBackingPathKnown`** 维护。  
   - **`#mainRowSplitter`**：右侧三 Dock **全为折叠或关闭**时 **`updateMainRowSplitterInteractable()`** 为 **`#dockRightStack`** 加 **`mm-dock-stack-fold-only`**（**`#dockAreaView` 不显示**，仅 **缘条**），并为分割条加 **`mm-main-row-splitter-inactive`**（透明、不可拖，**保留与可拖时相同的水平占位**以免主区与 Dock 宽度跳动）；拖拽中若变为全折叠则由 **`mm-main-row-splitter-force-end-drag`** 结束拖拽。
 
 - **VS Code / Cursor 扩展**（`mindmap_vscode/src/panel.ts`）  
@@ -194,9 +194,11 @@ alwaysApply: true
   - **`_computeThisPanelSaveLight()`** 计算黄/红/绿 → **`postMessage({ type: 'mindmap:saveTrafficLight', light })`** → Webview 更新三色灯；**`mindmap:ready`** 后也会推送一次。  
   - **`setContext('mindmapEditorHasUnsavedChanges', …)`** 与 **`workspaceState`** 中 `mindmap.dirtyMindmapAtLastSync` 等用于关闭/退出与键位 `when` 子句。
 
-- **独立浏览器**（无扩展宿主）：依赖 **`contentDirty` + `beforeunload`**；**`mindmap:savedOk`**（或等价）时 `setContentClean()`。**`mindmap:saveTrafficLight`** 仅在有代码向页面 `postMessage` 时更新三色灯；纯静态打开 HTML 时若未注入该消息，页内灯可能不反映编辑过程（文档或 `03-ops` 可标注限制或后续补齐）。
+- **独立浏览器**（无扩展宿主）：与扩展共用 **`webview-app.js`** 内 **`refreshLocalSaveTrafficLight()`**（`useLocalSaveTrafficLight()` 为真）：**黄**=`contentDirty`；**红**=干净但未关联磁盘路径（新建/未保存）；**绿**=干净且已打开或已保存（含 File System Access **`saveHandle`**、下载保存等路径由 `installBrowserMindmapHost` 维护 **`localBackingPathKnown`**）。依赖 **`contentDirty` + `beforeunload`** 拦截刷新；**`mindmap:savedOk`** 等价路径调用 **`setContentClean()`**。
 
-- **Electron 套壳**（`mindmap_vscode/desktop/main.js`）：保存成功后通过 **`sendHostMessage({ type: 'mindmap:savedOk' })`** 清脏；**推荐**主进程订阅编辑类消息并下发 **`mindmap:saveTrafficLight`**，以与扩展行为对齐（若尚未实现，须在文档中标为**缺口或计划**）。
+- **Electron 套壳**（`mindmap_vscode/desktop/main.js`）：同上由页内 **`refreshLocalSaveTrafficLight()`** 计算三色灯；主进程在 **`currentFilePath` 变化**及 **`did-finish-load`** 时 **`sendHostMessage({ type: 'mindmap:hostFilePath', path })`**，页面据此置 **`localBackingPathKnown`**。保存成功后仍 **`mindmap:savedOk`** 清脏。关闭窗口由主进程 **`close`** 与 **`window.mmGetContentDirty()`** + **`dialog.showMessageBox`** 确认，**勿**依赖 **`beforeunload`+`preventDefault`** 拦截关闭。
+
+- **VS Code 扩展**：由宿主下发 **`mindmap:saveTrafficLight`**（页内 **`useLocalSaveTrafficLight()` 为假**，不覆盖宿主三色灯）。
 
 #### 文档与同步
 

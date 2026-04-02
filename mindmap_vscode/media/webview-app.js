@@ -111,6 +111,16 @@ if (el && el.textContent) {
 
         let contentDirty = false;
         let suppressDirty = false;
+        /** 浏览器 / Electron：是否与磁盘路径关联（与扩展侧「有 backing 文件」语义对齐，供本地三色灯使用） */
+        let localBackingPathKnown = false;
+
+        function useLocalSaveTrafficLight() {
+          try {
+            if (window.__MINDMAP_BROWSER_FILE_OPS__) return true;
+            if (isElectronShell()) return true;
+          } catch (_) {}
+          return false;
+        }
 
         function markContentDirty() {
           if (suppressDirty) return;
@@ -118,13 +128,34 @@ if (el && el.textContent) {
           try {
             vscode.postMessage({ type: 'mindmap:edited' });
           } catch (_) {}
+          try {
+            refreshLocalSaveTrafficLight();
+          } catch (_) {}
         }
 
         function setContentClean() {
           contentDirty = false;
+          try {
+            refreshLocalSaveTrafficLight();
+          } catch (_) {}
+        }
+
+        function isElectronShell() {
+          try {
+            return typeof navigator !== 'undefined' && /Electron\//.test(navigator.userAgent);
+          } catch (_) {
+            return false;
+          }
+        }
+        /* Electron：beforeunload + preventDefault 会导致系统关闭按钮看似无响应；改由主进程 close 事件弹窗确认 */
+        if (isElectronShell()) {
+          window.mmGetContentDirty = function () {
+            return contentDirty;
+          };
         }
 
         window.addEventListener('beforeunload', function (e) {
+          if (isElectronShell()) return;
           if (contentDirty) {
             e.preventDefault();
             e.returnValue = '';
@@ -328,6 +359,20 @@ if (el && el.textContent) {
           var tipKey = L === 'yellow' ? 'saveLightYellow' : L === 'red' ? 'saveLightRed' : 'saveLightGreen';
           statusbarSaveLightEl.title = t(tipKey);
           statusbarSaveLightEl.setAttribute('aria-label', t(tipKey));
+        }
+
+        /** 浏览器 / Electron 与扩展共用 UI：黄=未保存，红=干净但未关联磁盘，绿=已保存且有关联路径（与 panel 侧语义一致） */
+        function refreshLocalSaveTrafficLight() {
+          if (!useLocalSaveTrafficLight()) {
+            return;
+          }
+          var light = 'green';
+          if (contentDirty) {
+            light = 'yellow';
+          } else if (!localBackingPathKnown) {
+            light = 'red';
+          }
+          applySaveTrafficLight(light);
         }
         const errorDialogEl = document.getElementById('errorDialog');
         const errorDialogMsgEl = document.getElementById('errorDialogMessage');
@@ -1325,8 +1370,10 @@ if (el && el.textContent) {
           const logCloseBtn = document.getElementById('logCloseBtn');
           if (logCopyBtn) logCopyBtn.textContent = t('logCopyAll');
           if (logCloseBtn) logCloseBtn.textContent = t('logClose');
-          const sbTitleEl = document.getElementById('statusbar');
-          if (sbTitleEl) sbTitleEl.title = t('statusbarLogHint');
+          const sbLogHintEl = document.getElementById('statusbarLeft');
+          const sbRootEl = document.getElementById('statusbar');
+          if (sbLogHintEl) sbLogHintEl.title = t('statusbarLogHint');
+          if (sbRootEl) sbRootEl.removeAttribute('title');
           if (canvasZoomValueEl) canvasZoomValueEl.title = t('zoomDblClickReset');
           const zFit = document.getElementById('canvasZoomFit');
           const zPanO = document.getElementById('canvasZoomPanOrigin');
@@ -1453,7 +1500,11 @@ if (el && el.textContent) {
           applyHtoolbarLabels();
           applyMenuBarSummaryAndContextShortcutTitles();
           updateDockMaximizeButtons();
-          applySaveTrafficLight(saveTrafficLightState);
+          if (useLocalSaveTrafficLight()) {
+            refreshLocalSaveTrafficLight();
+          } else {
+            applySaveTrafficLight(saveTrafficLightState);
+          }
           requestAnimationFrame(mmUpdateHtoolbarOverflowVisibility);
         }
 
@@ -5472,12 +5523,9 @@ if (el && el.textContent) {
           updateMainRowSplitterInteractable();
         })();
 
-        if (statusbarEl) {
-          statusbarEl.addEventListener('click', function (e) {
-            const t = e.target;
-            if (t && t.closest && t.closest('#statusbarSaveLight')) {
-              return;
-            }
+        var statusbarLeftEl = document.getElementById('statusbarLeft');
+        if (statusbarLeftEl) {
+          statusbarLeftEl.addEventListener('click', function () {
             showLogDialog();
           });
         }
@@ -5686,8 +5734,15 @@ if (el && el.textContent) {
         window.addEventListener('message', function (event) {
           const msg = event.data;
           if (!msg) return;
+          if (msg.type === 'mindmap:hostFilePath') {
+            localBackingPathKnown = !!(msg.path && String(msg.path).trim().length);
+            refreshLocalSaveTrafficLight();
+            return;
+          }
           if (msg.type === 'mindmap:saveTrafficLight') {
-            applySaveTrafficLight(msg.light);
+            if (!useLocalSaveTrafficLight()) {
+              applySaveTrafficLight(msg.light);
+            }
             return;
           }
           if (msg.type === 'mindmap:savedOk') {
@@ -5956,6 +6011,9 @@ if (el && el.textContent) {
                 var w = await saveHandle.createWritable();
                 await w.write(text0);
                 await w.close();
+                try {
+                  localBackingPathKnown = true;
+                } catch (_) {}
                 setContentClean();
                 setStatus(currentLang === 'zh' ? '已保存' : 'Saved');
                 return;
@@ -5988,6 +6046,9 @@ if (el && el.textContent) {
                 var writable = await pick.createWritable();
                 await writable.write(text1);
                 await writable.close();
+                try {
+                  localBackingPathKnown = true;
+                } catch (_) {}
                 setContentClean();
                 setStatus(currentLang === 'zh' ? '已保存' : 'Saved');
                 return;
@@ -6006,6 +6067,9 @@ if (el && el.textContent) {
             a.download = suggestedSaveName || 'mindmap.' + ext2;
             a.click();
             URL.revokeObjectURL(a.href);
+            try {
+              localBackingPathKnown = true;
+            } catch (_) {}
             setContentClean();
             setStatus(currentLang === 'zh' ? '已触发下载' : 'Download started');
           }
@@ -6039,6 +6103,9 @@ if (el && el.textContent) {
                 return true;
               }
               saveHandle = null;
+              try {
+                localBackingPathKnown = false;
+              } catch (_) {}
               suggestedSaveName = 'mindmap.mmd';
               try {
                 window.__mindmapBrowserDocExt = 'mmd';
@@ -6082,6 +6149,9 @@ if (el && el.textContent) {
                     var treeOpen = window.MindmapCore.parseCoreMindmapText(text, parseExt);
                     saveHandle = null;
                     suggestedSaveName = f.name || 'mindmap.mmd';
+                    try {
+                      localBackingPathKnown = true;
+                    } catch (_) {}
                     suppressDirty = true;
                     init(treeOpen, parseExt);
                     suppressDirty = false;
@@ -6129,6 +6199,9 @@ if (el && el.textContent) {
           }
 
           window.__mindmapBrowserDispatch = dispatch;
+          try {
+            refreshLocalSaveTrafficLight();
+          } catch (_) {}
         }
 
         installBrowserMindmapHost();
@@ -6141,6 +6214,11 @@ if (el && el.textContent) {
           try {
             applyLanguage(__MINDMAP_BOOT__.uiLanguage === 'zh' ? 'zh' : 'en');
             init(__MINDMAP_BOOT__.tree, __MINDMAP_BOOT__.ext);
+            try {
+              if (useLocalSaveTrafficLight()) {
+                refreshLocalSaveTrafficLight();
+              }
+            } catch (_) {}
           } catch (bootErr) {
             var bm = bootErr && bootErr.message ? bootErr.message : String(bootErr);
             try {
