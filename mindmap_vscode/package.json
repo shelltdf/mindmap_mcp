@@ -3,7 +3,7 @@
   "displayName": "Mindmap (MindmapEditor)",
   "icon": "media/icon.png",
   "description": "WYSIWYG mindmap editor inside VS Code (webview). Supports multiple formats.",
-  "version": "0.0.150",
+  "version": "0.0.158",
   "publisher": "av-ai-dev",
   "license": "MIT",
   "engines": {
@@ -54,7 +54,7 @@
       },
       {
         "command": "mindmapVscode.toggleWorkbenchFullScreen",
-        "title": "Mindmap: Toggle Workbench Full Screen",
+        "title": "Mindmap: Toggle Maximize Mindmap Editor",
         "category": "Mindmap"
       },
       {

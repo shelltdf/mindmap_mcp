@@ -40,7 +40,8 @@
   - **壳与样式**：仍在 `mindmap_vscode/src/panel.ts` 的模板字符串中（`return \`…\``.replace(…)）。
   - **主题早置**：`media/webview-theme-init.js`（设置 `html[data-mm-ui]`，与 `--mm-bg-app` 等一致）。
   - **主逻辑**：`media/webview-app.js`（jsMind 初始化、画布交互、Dock、与宿主 `postMessage` 等）。
-  - **启动数据**：`<script type="application/json" id="mindmap-boot-json">…</script>` 注入 JSON；`webview-app.js` 入口解析为 `__MINDMAP_BOOT__`（含 `tree` / `ext` / `uiLanguage`）。
+  - **启动数据**：`<script type="application/json" id="mindmap-boot-json">…</script>` 注入 JSON；`webview-app.js` 入口解析为 `__MINDMAP_BOOT__`（含 `tree` / `ext` / `uiLanguage` / **`extensionVersion`**（扩展来自 `package.json`；网页 dev / Electron 壳由生成脚本或 `desktop/main.js` 注入））。
+  - **主 UI 壳**：`#mindmapAppShell`（`panel.ts`）包住顶栏、菜单、工具栏、主行与状态栏；**浏览器**全屏目标为该节点（Fullscreen API）；**Electron** 仍为整窗 `setFullScreen`；**VS Code/Cursor** 不依赖页内全屏，见下「全屏与最大化」。
   - **扩展资源 URL 占位符**：模板中使用字面量 `___MM_SRC_WEBVIEW_THEME___`、`___MM_SRC_WEBVIEW_APP___`，在 `panel.ts` 返回前经 `.replace(/___MM_SRC_WEBVIEW_THEME___/g, webviewThemeInitUrl)` 等与 **`webview.asWebviewUri(…media/…)`** 结果替换；**不得**依赖未经过上述替换的 `${webviewAppUrl}` 字面（本地 `out/web_dev.html` 生成见下「开发调试」）。
 - **外链顺序**：`mindmap-core.js` → `jsmind.js` → `mindmap-boot-json` → `webview-app.js`。
 - **换树策略（减轻闪烁）**：宿主 `MindmapPanel._loadTreeIntoWebview`：**首次**（Webview 尚未上报 `mindmap:ready`）必须把树写入 **`webview.html` 注入**，否则脚本末尾才注册 `message` 时 `postMessage(mindmap:setTree)` 会丢失。**首次就绪后**置 `_webviewJsReady`，此后同一面板的「新建 / 打开 / 替换树」仅 **`postMessage({ type: 'mindmap:setTree', tree, ext, uiLanguage })`**，**不再**整页赋值 `webview.html`，避免整页重载白屏闪烁。
@@ -78,7 +79,12 @@
 - **界面布局不持久化**：**`installCanvasVisibilityAndDockSplitter`** **不**将 Dock 区宽度、画布图层勾选、右上可见性面板折叠、左上快捷键面板折叠写入 **`localStorage`**；每次打开为**默认布局**（图层全勾选、右上默认展开、左上默认折叠等）。**本次会话内**拖分割条仍可改宽；**窗口 `resize`** 时若存在**内联** `width` 则仅做 **`applyDockWidth` 钳位**，**不**从存储恢复。脑图主题 / 页内 UI 深浅色（`mindmapJsmindTheme` / `mindmapUiThemeMode`）仍可按既有逻辑持久化，**不**算「布局」。
 - **格式（Format）**：作用对象为**当前选中节点**；无选中时表单 **`dock-disabled`**，且 **Topic / 字体 / 字号 / 文字色 / 背景色 / 重置** 等控件 **`disabled`**，字段清空（颜色占位为合法 hex）。有选中时：优先 **`node.data`** 的 `mmFont` / `mmFontSize` / `mmColor` / `mmBg`；缺失时从 **`jmnode` DOM** 读取**默认外观**（临时移除 **`selected`** 再取计算样式），避免把**选中高亮**当成主题色；`rgb`/`rgba`/`#rgb` 规范化为 **`#rrggbb`** 供 `<input type="color">`。
 - **脑图主题（Mind map theme）**：缘条按钮展开网格；预览缩略图中 **`jmnodes`/`jmnode` 覆盖为流内定位**，避免 vendor `jsmind.css` 中 `position:absolute` 导致预览与标签错位。
-- **全屏**：标题栏按钮或 Webview 内 **`Ctrl+Space`**（无 `meta`）→ `mindmap:requestToggleFullScreen` → 宿主 **`workbench.action.toggleFullScreen`**。扩展 `package.json` 另注册 **`ctrl+space` → `mindmapVscode.toggleDock`**（全局）；焦点在 Webview 内时一般由页面优先处理，行为以实际为准。
+- **全屏与最大化（三端语义）**  
+  - **共用**：标题栏按钮或 Webview 内 **`Ctrl+Space`**（无 `Cmd`）→ `postMessage({ type: 'mindmap:requestToggleFullScreen' })`。  
+  - **浏览器**（`installBrowserMindmapHost` 拦截）：对 **`#mindmapAppShell`** 调用 Fullscreen API；**非**整页 `documentElement`。  
+  - **Electron 桌面**（`desktop/main.js`）：**`BrowserWindow.setFullScreen`** 切换。  
+  - **VS Code / Cursor**（`panel.ts` / `extension.ts`）：**`workbench.action.toggleMaximizeEditorGroup`** —— **仅最大化脑图所在编辑器组**，**不**执行整 IDE 的 **`workbench.action.toggleFullScreen`（F11）**。执行前 **`WebviewPanel.reveal`（经 `focus()`）** + **`workbench.action.focusActiveEditorGroup`**。扩展命令 **`mindmapVscode.toggleWorkbenchFullScreen`** 与 **`package.json` 键位 `ctrl+space`**（`when: mindmapActiveTabIsMindmap`）与此一致；**`Ctrl+Shift+Space`** 为 **`mindmapVscode.toggleDock`**（与全屏不同）。  
+  - **页内标题主名 + 版本**：`applyLanguage` 将 **`#appTitleName`** 设为 **`i18n 主名 + ' · ' + extensionVersion`**（无版本字段时仅主名）。
 - **画布左上角快捷键提示**：`#canvasShortcutHints` 绝对定位于 `#canvasWrap` 左上，`pointer-events: none`；文案键 **`canvasShortcutHints`**（`i18n` en/zh，多行 `\n`），随 **`applyLanguage`** 更新。
 
 ## 开发调试（Web，非 VSIX）

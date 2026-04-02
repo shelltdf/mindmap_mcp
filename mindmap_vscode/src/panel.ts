@@ -224,9 +224,13 @@ export class MindmapPanel {
    */
   private _pendingDocSyncFromWebview = false;
 
-  private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri) {
+  /** 扩展包版本（写入 boot JSON，标题栏展示） */
+  private readonly _extensionVersion: string;
+
+  private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri, extensionVersion: string) {
     this._panel = panel;
     this._extensionUri = extensionUri;
+    this._extensionVersion = extensionVersion;
     this._uiLanguage = vscode.env.language.toLowerCase().startsWith('zh') ? 'zh' : 'en';
     this._panel.webview.onDidReceiveMessage(
       (msg) => this._handleMessage(msg),
@@ -345,7 +349,11 @@ export class MindmapPanel {
       }
     );
 
-    const instance = new MindmapPanel(panel, context.extensionUri);
+    const instance = new MindmapPanel(
+      panel,
+      context.extensionUri,
+      String(context.extension.packageJSON?.version ?? '')
+    );
     instance._filePath = filePath;
     MindmapPanel._instances.add(instance);
     MindmapPanel.currentPanel = instance;
@@ -374,7 +382,11 @@ export class MindmapPanel {
       localResourceRoots: [mediaRoot]
     };
 
-    const instance = new MindmapPanel(webviewPanel, context.extensionUri);
+    const instance = new MindmapPanel(
+      webviewPanel,
+      context.extensionUri,
+      String(context.extension.packageJSON?.version ?? '')
+    );
     instance._textDocument = document;
     instance._filePath = document.uri.fsPath;
     instance._ext = ext;
@@ -1018,7 +1030,14 @@ export class MindmapPanel {
     }
 
     if (msg.type === 'mindmap:requestToggleFullScreen') {
-      await this._safeExec('workbench.action.toggleFullScreen');
+      // VS Code/Cursor：只切换「脑图」所在编辑器组最大化，不整应用 F11；浏览器/Electron 仍由页内壳层全屏
+      this.focus();
+      try {
+        await vscode.commands.executeCommand('workbench.action.focusActiveEditorGroup');
+      } catch {
+        /* ignore */
+      }
+      await this._safeExec('workbench.action.toggleMaximizeEditorGroup');
       return;
     }
 
@@ -1781,7 +1800,8 @@ export class MindmapPanel {
     const bootJsonForHtml = JSON.stringify({
       tree: boot.tree,
       ext: boot.ext,
-      uiLanguage: this._uiLanguage
+      uiLanguage: this._uiLanguage,
+      extensionVersion: this._extensionVersion
     }).replace(/</g, '\\u003c');
 
     // Offline: load jsMind assets from extension bundle.
@@ -1818,7 +1838,7 @@ export class MindmapPanel {
     <script nonce="${nonce}" src="___MM_SRC_WEBVIEW_THEME___"></script>
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'none'; img-src ${cspSource} https: data:; style-src 'unsafe-inline' ${cspSource}; script-src 'nonce-${nonce}' ${cspSource}; connect-src ${cspSource} https:; font-src ${cspSource} https: data:; "
+      content="default-src 'none'; img-src ${cspSource} https: data:; style-src 'unsafe-inline' ${cspSource}; script-src 'nonce-${nonce}' ${cspSource}; connect-src ${cspSource} https:; font-src ${cspSource} https: data:; fullscreen ${cspSource}; "
     />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" type="text/css" href="${jsmindCssUrl}" />
@@ -1942,6 +1962,14 @@ export class MindmapPanel {
         display: flex;
         flex-direction: column;
         background: var(--mm-bg-app);
+      }
+      /* 脑图主 UI 壳：与网页/Electron 全屏 API 目标一致；VS 扩展侧由宿主整窗全屏占满当前显示器 */
+      .mindmap-app-shell {
+        flex: 1 1 auto;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
       }
       /* 顶栏：扩展图标 + 产品名（与菜单栏分离，便于识别应用） */
       .appTitleBar {
@@ -3524,6 +3552,7 @@ export class MindmapPanel {
     </style>
   </head>
   <body>
+    <div id="mindmapAppShell" class="mindmap-app-shell">
     <header class="appTitleBar" id="appTitleBar" role="banner">
       <div class="appTitleBrand">
         <div class="appTitleIconWrap" id="appTitleIconWrap" aria-hidden="true">
@@ -3888,6 +3917,7 @@ export class MindmapPanel {
       <div class="statusbarRight">
         <span id="statusbarSaveLight" class="statusbarSaveLight green" role="img" aria-label="save state"></span>
       </div>
+    </div>
     </div>
     <div class="dialogOverlay hidden" id="errorDialog">
       <div class="dialogCard" role="dialog" aria-modal="true" aria-labelledby="errorDialogTitle">

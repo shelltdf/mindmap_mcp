@@ -13,6 +13,18 @@ const WEBVIEW_THEME_INIT_JS = path.join(ROOT_DIR, 'media', 'webview-theme-init.j
 const WEBVIEW_APP_JS = path.join(ROOT_DIR, 'media', 'webview-app.js');
 const ICON_PNG = path.join(ROOT_DIR, 'media', 'icon.png');
 
+function readPackageVersion() {
+  try {
+    const p = path.join(ROOT_DIR, 'package.json');
+    const j = JSON.parse(fs.readFileSync(p, 'utf8'));
+    return String(j.version || '').trim();
+  } catch (_) {
+    return '';
+  }
+}
+
+const APP_PACKAGE_VERSION = readPackageVersion();
+
 function getCore() {
   try {
     // eslint-disable-next-line import/no-dynamic-require, global-require
@@ -71,7 +83,8 @@ function makeStandaloneHtml(bootTree, ext) {
   const bootJsonForHtml = JSON.stringify({
     tree: bootTree,
     ext: ext,
-    uiLanguage: 'zh'
+    uiLanguage: 'zh',
+    extensionVersion: APP_PACKAGE_VERSION
   }).replace(/</g, '\\u003c');
   let tpl = extractPanelTemplate();
   tpl = tpl

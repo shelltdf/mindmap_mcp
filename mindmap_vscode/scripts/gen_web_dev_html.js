@@ -9,7 +9,17 @@ const crypto = require('crypto');
 
 const ROOT_DIR = path.resolve(__dirname, '..');
 const PANEL_TS = path.join(ROOT_DIR, 'src', 'panel.ts');
+const PACKAGE_JSON = path.join(ROOT_DIR, 'package.json');
 const OUT_HTML = path.join(ROOT_DIR, 'out', 'web_dev.html');
+
+function readPackageVersion() {
+  try {
+    const j = JSON.parse(fs.readFileSync(PACKAGE_JSON, 'utf8'));
+    return String(j.version || '').trim();
+  } catch (_) {
+    return '';
+  }
+}
 
 function extractPanelTemplate() {
   const src = fs.readFileSync(PANEL_TS, 'utf8');
@@ -48,7 +58,8 @@ function makeWebDevHtml(host, port) {
   const bootJsonForHtml = JSON.stringify({
     tree: defaultTree(),
     ext: 'mmd',
-    uiLanguage: 'zh'
+    uiLanguage: 'zh',
+    extensionVersion: readPackageVersion()
   }).replace(/</g, '\\u003c');
 
   let tpl = extractPanelTemplate();

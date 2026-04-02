@@ -114,10 +114,32 @@ if (el && el.textContent) {
         /** 浏览器 / Electron：是否与磁盘路径关联（与扩展侧「有 backing 文件」语义对齐，供本地三色灯使用） */
         let localBackingPathKnown = false;
 
+        /** VS Code / Cursor 的 Webview 也跑在 Electron 里，不能与桌面独立壳混用 isElectronShell() */
+        function isMindmapHostedInVsCodeWebview() {
+          try {
+            var h = String((window.location && window.location.href) || '');
+            var o = String((window.location && window.location.origin) || '');
+            if (/vscode-webview/i.test(h) || /vscode-webview/i.test(o)) {
+              return true;
+            }
+            if (/^vscode-file:/i.test(h)) {
+              return true;
+            }
+          } catch (_) {}
+          return false;
+        }
+
         function useLocalSaveTrafficLight() {
           try {
-            if (window.__MINDMAP_BROWSER_FILE_OPS__) return true;
-            if (isElectronShell()) return true;
+            if (isMindmapHostedInVsCodeWebview()) {
+              return false;
+            }
+            if (window.__MINDMAP_BROWSER_FILE_OPS__) {
+              return true;
+            }
+            if (isElectronShell()) {
+              return true;
+            }
           } catch (_) {}
           return false;
         }
@@ -451,7 +473,7 @@ if (el && el.textContent) {
               'Wheel — zoom (pointer position is zoom center)\n' +
               'MMB drag — pan\n' +
               'Drag node onto another — reparent as child\n' +
-              'Ctrl+Space — full screen (browser: page fullscreen; desktop: window; VS Code: workbench)\n' +
+              'Ctrl+Space — full screen mindmap (browser: app shell; desktop: window; VS Code/Cursor: maximize editor group)\n' +
               'Ctrl+Shift+Space — maximize/restore dock layout (VS Code only; no-op in browser/desktop)',
             dockFormatEdge: 'Format dock — click to expand/collapse',
             dockIconEdge: 'Icon dock — click to expand/collapse',
@@ -493,7 +515,8 @@ if (el && el.textContent) {
             appTitlePrimary: 'Mindmap',
             appTitleSecondary: 'MindmapEditor',
             appTitleBannerAria: 'Mindmap Editor',
-            titleBarFullScreen: 'Full screen — toggle desktop window (VS Code)',
+            titleBarFullScreen:
+              'Full screen — mindmap main UI (browser: #mindmapAppShell; desktop: window; VS Code/Cursor: maximize editor group only, not whole IDE)',
             sumFile: 'File',
             sumEdit: 'Edit',
             sumView: 'View',
@@ -639,7 +662,7 @@ if (el && el.textContent) {
               '滚轮 — 缩放（以指针位置为缩放中心）\n' +
               '中键拖拽 — 平移\n' +
               '拖拽节点到另一节点 — 成为其子节点（调整父子）\n' +
-              'Ctrl+空格 — 全屏（浏览器：页全屏；桌面：窗口；VS Code：工作台）\n' +
+              'Ctrl+空格 — 脑图主界面（浏览器：主壳全屏；桌面：窗口；VS Code/Cursor：最大化编辑器组）\n' +
               'Ctrl+Shift+空格 — 最大化/还原停靠布局（仅 VS Code；浏览器/桌面无操作）',
             dockFormatEdge: '格式 Dock — 点击展开/折叠',
             dockIconEdge: '图标 Dock — 点击展开/折叠',
@@ -681,7 +704,8 @@ if (el && el.textContent) {
             appTitlePrimary: '脑图',
             appTitleSecondary: 'Mindmap 编辑器',
             appTitleBannerAria: '脑图编辑器',
-            titleBarFullScreen: '全屏 — 切换桌面窗口全屏（与 VS Code 一致）',
+            titleBarFullScreen:
+              '全屏 — 脑图主界面（浏览器：主壳全屏；桌面：窗口全屏；VS Code/Cursor：仅最大化脑图所在编辑器组，不整 IDE）',
             sumFile: '文件',
             sumEdit: '编辑',
             sumView: '视图',
@@ -762,6 +786,35 @@ if (el && el.textContent) {
         function t(key) {
           const dict = i18n[currentLang] || i18n.en;
           return dict[key] || key;
+        }
+
+        /** package.json version，由扩展 / 网页 dev / Electron 壳注入 boot JSON */
+        function getMindmapExtensionVersion() {
+          try {
+            if (
+              typeof __MINDMAP_BOOT__ === 'object' &&
+              __MINDMAP_BOOT__ &&
+              __MINDMAP_BOOT__.extensionVersion
+            ) {
+              return String(__MINDMAP_BOOT__.extensionVersion).trim();
+            }
+          } catch (_) {}
+          return '';
+        }
+
+        /** 网页 / 独立壳：#mindmapAppShell 占满当前显示器；与 Electron 整窗全屏、VS 宿主整窗全屏语义对齐 */
+        function toggleMindmapShellFullscreen() {
+          var shell = document.getElementById('mindmapAppShell');
+          var el = shell || document.documentElement;
+          try {
+            if (document.fullscreenElement) {
+              void document.exitFullscreen();
+            } else if (el.requestFullscreen) {
+              void el.requestFullscreen();
+            } else if (el.webkitRequestFullscreen) {
+              void el.webkitRequestFullscreen.call(el);
+            }
+          } catch (_) {}
         }
 
         function mmIsMacLike() {
@@ -1464,7 +1517,14 @@ if (el && el.textContent) {
             hob.setAttribute('aria-label', t('htoolbarOverflowMore'));
             hob.title = t('htoolbarOverflowMore');
           }
-          byId('appTitleName', t('appTitlePrimary'));
+          (function () {
+            var ver = getMindmapExtensionVersion();
+            var base = t('appTitlePrimary');
+            var el = document.getElementById('appTitleName');
+            if (el) {
+              el.textContent = ver ? base + ' · ' + ver : base;
+            }
+          })();
           byId('appTitleSub', t('appTitleSecondary'));
           const appTitleBarEl = document.getElementById('appTitleBar');
           if (appTitleBarEl) appTitleBarEl.setAttribute('aria-label', t('appTitleBannerAria'));
@@ -4871,7 +4931,7 @@ if (el && el.textContent) {
               target0.tagName === 'SELECT' ||
               target0.isContentEditable
             );
-          // Ctrl+空格：各宿主统一走 postMessage → 浏览器全屏 API / Electron setFullScreen / VS Code workbench 全屏（与标题栏按钮一致）。
+          // Ctrl+空格：浏览器/Electron 走页内全屏；VS Code/Cursor → toggleMaximizeEditorGroup（仅脑图编辑器组）。
           // Ctrl+Shift+空格：VS Code 停靠布局（与 package.json 一致）；浏览器与桌面壳忽略。
           const isCtrlSpaceBar =
             e.ctrlKey &&
@@ -6177,12 +6237,7 @@ if (el && el.textContent) {
             }
             if (ty === 'mindmap:requestToggleFullScreen') {
               try {
-                var de = document.documentElement;
-                if (document.fullscreenElement) {
-                  void document.exitFullscreen();
-                } else if (de && de.requestFullscreen) {
-                  void de.requestFullscreen();
-                }
+                toggleMindmapShellFullscreen();
               } catch (fsErr) {
                 notifyInvalidAction(
                   currentLang === 'zh'

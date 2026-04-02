@@ -154,7 +154,9 @@ export async function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     vscode.commands.registerCommand('mindmapVscode.toggleWorkbenchFullScreen', async () => {
-      await safeExec('workbench.action.toggleFullScreen');
+      MindmapPanel.currentPanel?.focus();
+      await safeExec('workbench.action.focusActiveEditorGroup');
+      await safeExec('workbench.action.toggleMaximizeEditorGroup');
     })
   );
 

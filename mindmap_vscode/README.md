@@ -24,7 +24,7 @@
    非 `.jm` / `.mmd` / `.xmind` 时会提示不支持；支持的后缀行为与 **`Mindmap: Open Mindmap Editor`** 一致。
 4. 在 Webview 脑图窗口中用顶部菜单栏、左侧工具栏等操作（布局以当前 IDE 为准）。
 5. **快捷键（与全屏 / Dock）**（三端语义对齐）：
-   - **`Ctrl+Space`**（不含 `Cmd`）：页面统一 `postMessage` **`mindmap:requestToggleFullScreen`** → **浏览器**：`requestFullscreen` / `exitFullscreen`；**Electron 桌面**：`BrowserWindow.setFullScreen`；**VS Code / Cursor**：`workbench.action.toggleFullScreen`（与标题栏 **全屏** 按钮一致）。扩展侧仍注册同名命令，便于焦点不在 Webview 时触发。
+   - **`Ctrl+Space`**（不含 `Cmd`）：**浏览器**：`#mindmapAppShell` **Fullscreen API**；**Electron 桌面**：`BrowserWindow.setFullScreen`；**VS Code / Cursor**：`workbench.action.toggleMaximizeEditorGroup`（**只**最大化脑图所在**编辑器组**，不放大整个 IDE 窗口）。页面统一 `postMessage` **`mindmap:requestToggleFullScreen`**；扩展侧仍注册 **`mindmapVscode.toggleWorkbenchFullScreen`**。
    - **`Ctrl+Shift+Space`**：页面发送 **`mindmap:requestToggleDock`** → 扩展执行 **`mindmapVscode.toggleDock`**（侧栏 / 面板 / 活动栏 / 状态栏等布局）；浏览器与桌面壳无 Dock 概念，按键由页面消费但宿主无操作。`package.json` 中键位与之一致（`when: mindmapActiveTabIsMindmap`）。
 6. 编辑器内文件快捷键：`Ctrl/Cmd + N` 新建、`Ctrl/Cmd + O` 打开、`Ctrl/Cmd + S` 保存、`Ctrl/Cmd + Shift + S` 另存为。
 
@@ -33,8 +33,9 @@
 当前仓库支持两种发布/运行方式，可并行保留：
 
 - **VS Code / Cursor 扩展模式（原模式）**
-  - 构建：`python build.py`
-  - 安装：`python install.py`
+  - 构建：`python build.py`（编译、打 VSIX，`package.json` patch +1）
+  - 安装：`python install.py`（**默认先执行 `build.py`**，再安装 `out` 下与版本一致的 VSIX，保证是当前源码最新产物）
+  - 仅安装、不重新构建：`python install.py --no-build`
   - 产物：`out/*.vsix`
 - **独立桌面模式（Electron）**
   - 开发运行（默认）：`python run.py`
@@ -52,9 +53,20 @@
 
 说明：
 - 扩展模式与桌面模式互不替代，功能目标保持一致。
-- `build.py/install.py` 仍只负责 VSIX 扩展链路；`run.py` 负责桌面模式；`run_web.py` 仅用于本地网页调试，不产出安装包。
+- `build.py` 负责 VSIX 打包；`install.py` 默认会调用 `build.py` 再安装；`run.py` 负责桌面模式；`run_web.py` 仅用于本地网页调试，不产出安装包。
 - 桌面模式当前支持 `.mmd` / `.jm` 文件的打开、编辑、保存、另存为。
 - 网页调试模式下画布由 `out/web_dev.html` 加载，已注入 `acquireVsCodeApi` 桩，文件保存等需 IDE 的能力在浏览器中不可用或仅打日志，以调试 UI 与脚本逻辑为主。
+
+### 工程文档索引（仓库根）
+
+四阶段规格与运维说明位于仓库 **`ai-software-engineering/`**，与本目录 **`mindmap_vscode/`** 分离。常用入口：
+
+| 内容 | 路径 |
+|------|------|
+| 物理规格（行为与界面约定） | `ai-software-engineering/02-physical/mindmap-vscode-extension/spec.md` |
+| 模型 → 源码映射 | `ai-software-engineering/02-physical/mindmap-vscode-extension/mapping.md` |
+| 用户手册 | `ai-software-engineering/03-ops/user-manual.md` |
+| 开发者手册 | `ai-software-engineering/03-ops/developer-manual.md` |
 
 ### 多标签（多实例）
 

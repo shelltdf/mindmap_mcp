@@ -9,8 +9,9 @@
 
 在 `mindmap_vscode/` 目录：
 
-- **构建 VSIX**：`python build.py`（内部调用 `npm` / `vsce` 等，见脚本全文）。
-- **安装**：`python install.py`
+- **构建 VSIX**：`python build.py`（内部调用 `npm` / `vsce` 等；默认对 `package.json` 做 patch +1 并更新 `doc/CHANGELOG.md` 占位，见脚本全文）。
+- **安装**：`python install.py` —— **默认先执行 `build.py`**，再向本机 **Cursor / VS Code** 安装 `out/` 下与当前版本一致的 `.vsix`（保证与源码一致）。
+- **仅安装、不重新构建**：`python install.py --no-build`（需已有 `out/*.vsix`）。
 
 或直接 `npm run compile`、`npm run vscode:prepublish`（会编译并 `mcp:pack`）。
 

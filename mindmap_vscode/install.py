@@ -1,11 +1,19 @@
 from __future__ import annotations
 
+"""
+安装扩展至 Cursor / VS Code。
+
+默认会先执行同目录下的 build.py（编译 + 打 VSIX），保证安装的是当前仓库最新代码产物。
+仅当已有 VSIX、不想再次 bump 版本或重复构建时，使用: python install.py --no-build
+"""
+
+import argparse
+import json
 import os
 import shutil
 import subprocess
 import sys
 from pathlib import Path
-import json
 
 
 def _find_cursor_executable() -> str | None:
@@ -89,10 +97,35 @@ def _find_code_executable() -> str | None:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Build (default) and install the mindmap VSIX into Cursor / VS Code."
+    )
+    parser.add_argument(
+        "--no-build",
+        action="store_true",
+        help="Do not run build.py; install existing out/*.vsix (must match package.json version or use newest).",
+    )
+    args = parser.parse_args()
+
     ext_dir = Path(__file__).resolve().parent
     out_dir = ext_dir / "out"
-    if not out_dir.is_dir():
+    build_py = ext_dir / "build.py"
+
+    if not args.no_build:
+        if not build_py.is_file():
+            print(f"error: missing {build_py}", file=sys.stderr)
+            return 1
+        print("+ " + sys.executable + " " + str(build_py), flush=True)
+        br = subprocess.run([sys.executable, str(build_py)], cwd=str(ext_dir))
+        if br.returncode != 0:
+            print("error: build.py failed; fix the build before installing.", file=sys.stderr)
+            return br.returncode
+    elif not out_dir.is_dir():
         print(f"error: missing out dir: {out_dir}", file=sys.stderr)
+        print(
+            "hint: run without --no-build to build first, or: python build.py",
+            file=sys.stderr,
+        )
         return 1
 
     pkg_path = ext_dir / "package.json"

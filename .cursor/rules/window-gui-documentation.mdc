@@ -198,7 +198,7 @@ alwaysApply: true
 
 - **Electron 套壳**（`mindmap_vscode/desktop/main.js`）：同上由页内 **`refreshLocalSaveTrafficLight()`** 计算三色灯；主进程在 **`currentFilePath` 变化**及 **`did-finish-load`** 时 **`sendHostMessage({ type: 'mindmap:hostFilePath', path })`**，页面据此置 **`localBackingPathKnown`**。保存成功后仍 **`mindmap:savedOk`** 清脏。关闭窗口由主进程 **`close`** 与 **`window.mmGetContentDirty()`** + **`dialog.showMessageBox`** 确认，**勿**依赖 **`beforeunload`+`preventDefault`** 拦截关闭。
 
-- **VS Code 扩展**：由宿主下发 **`mindmap:saveTrafficLight`**（页内 **`useLocalSaveTrafficLight()` 为假**，不覆盖宿主三色灯）。
+- **VS Code 扩展**：由宿主下发 **`mindmap:saveTrafficLight`**。页内 **`useLocalSaveTrafficLight()` 为假**（含通过 `location` 识别 **`vscode-webview` / `vscode-file`**，避免 Webview 亦属 Electron 时误判为「桌面本地灯」）。
 
 #### 文档与同步
 
