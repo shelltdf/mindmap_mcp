@@ -18,6 +18,7 @@
     "onCommand:mindmapVscode.openMindmapEditor",
     "onCommand:mindmapVscode.openWithMindmap",
     "onCommand:mindmapVscode.toggleDock",
+    "onCommand:mindmapVscode.toggleWorkbenchFullScreen",
     "onCommand:mindmapVscode.newMindmapFile"
   ],
   "main": "./dist/extension.js",
@@ -49,6 +50,11 @@
       {
         "command": "mindmapVscode.toggleDock",
         "title": "Mindmap: Toggle Dock Maximized",
+        "category": "Mindmap"
+      },
+      {
+        "command": "mindmapVscode.toggleWorkbenchFullScreen",
+        "title": "Mindmap: Toggle Workbench Full Screen",
         "category": "Mindmap"
       },
       {
@@ -135,9 +141,16 @@
     },
     "keybindings": [
       {
-        "command": "mindmapVscode.toggleDock",
+        "command": "mindmapVscode.toggleWorkbenchFullScreen",
         "key": "ctrl+space",
-        "when": "true"
+        "mac": "ctrl+space",
+        "when": "mindmapActiveTabIsMindmap"
+      },
+      {
+        "command": "mindmapVscode.toggleDock",
+        "key": "ctrl+shift+space",
+        "mac": "ctrl+shift+space",
+        "when": "mindmapActiveTabIsMindmap"
       },
       {
         "command": "mindmapVscode.closeMindmapEditor",

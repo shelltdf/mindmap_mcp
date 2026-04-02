@@ -377,7 +377,7 @@ if (el && el.textContent) {
             zoomStackAria: 'Fit view, center root, reset zoom, and scale controls',
             zoomControlsAria: 'Zoom controls',
             canvasShortcutHintsTitle: 'Shortcuts',
-            canvasShortcutHintsHoverTitle: 'Hover to show the full shortcut list',
+            canvasShortcutHintsHoverTitle: 'Hover or click to show the full shortcut list',
             canvasShortcutHints:
               '— After selecting a node —\n' +
               '↑↓ — siblings\n' +
@@ -389,11 +389,14 @@ if (el && el.textContent) {
               'Alt+↑↓ — reorder\n' +
               'Alt+←→ — promote / demote\n' +
               'Double-click node — edit topic\n' +
+              'Printable key — inline edit (replace topic from first character)\n' +
               '\n' +
               '— No selection required —\n' +
               'Wheel — zoom\n' +
               'MMB drag — pan\n' +
-              'Ctrl+Space — full screen',
+              'Drag node onto another — reparent as child\n' +
+              'Ctrl+Space — full screen (browser: page fullscreen; desktop: window; VS Code: workbench)\n' +
+              'Ctrl+Shift+Space — maximize/restore dock layout (VS Code only; no-op in browser/desktop)',
             dockFormatEdge: 'Format dock — click to expand/collapse',
             dockIconEdge: 'Icon dock — click to expand/collapse',
             dockJsmindThemeEdge: 'Mind map theme dock — click to expand/collapse',
@@ -542,7 +545,7 @@ if (el && el.textContent) {
             zoomStackAria: '适应画布、根节点居正、还原缩放与比例缩放',
             zoomControlsAria: '缩放控件',
             canvasShortcutHintsTitle: '快捷键',
-            canvasShortcutHintsHoverTitle: '鼠标悬停显示完整快捷键列表',
+            canvasShortcutHintsHoverTitle: '悬停或点击显示完整快捷键列表',
             canvasShortcutHints:
               '— 选中对象后 —\n' +
               '↑↓ — 兄弟\n' +
@@ -554,11 +557,14 @@ if (el && el.textContent) {
               'Alt+↑↓ — 顺序\n' +
               'Alt+←→ — 提升 / 下降\n' +
               '双击节点 — 编辑内容\n' +
+              '可打印字符 — 直接内联编辑（从首字起替换原标题）\n' +
               '\n' +
               '— 无需选中 —\n' +
               '滚轮 — 缩放\n' +
               '中键拖拽 — 平移\n' +
-              'Ctrl+空格 — 全屏',
+              '拖拽节点到另一节点 — 成为其子节点（调整父子）\n' +
+              'Ctrl+空格 — 全屏（浏览器：页全屏；桌面：窗口；VS Code：工作台）\n' +
+              'Ctrl+Shift+空格 — 最大化/还原停靠布局（仅 VS Code；浏览器/桌面无操作）',
             dockFormatEdge: '格式 Dock — 点击展开/折叠',
             dockIconEdge: '图标 Dock — 点击展开/折叠',
             dockJsmindThemeEdge: '脑图主题 Dock — 点击展开/折叠',
@@ -673,34 +679,300 @@ if (el && el.textContent) {
           return dict[key] || key;
         }
 
-        /** [英文占位, 图标, 快捷键提示] — 工具栏仅显示图标，文案在 title / aria-label */
+        function mmIsMacLike() {
+          try {
+            if (typeof navigator === 'undefined') return false;
+            if (/Macintosh|Mac OS X/i.test(navigator.userAgent || '')) return true;
+            const p = navigator.platform || '';
+            if (/^Mac/i.test(p)) return true;
+            if (navigator.userAgentData && navigator.userAgentData.platform === 'macOS') return true;
+          } catch (_) {}
+          return false;
+        }
+
+        /** 主修饰键：文件/编辑类与画布内一致用 Ctrl 或 ⌘（非 VS Code 标题栏 Ctrl+空格 特例）。 */
+        function mmPrimaryModLabel() {
+          return mmIsMacLike() ? '⌘' : 'Ctrl';
+        }
+
+        function mmChord(key, withShift) {
+          const m = mmPrimaryModLabel();
+          if (m === '⌘') {
+            return withShift ? '⌘+Shift+' + key : '⌘+' + key;
+          }
+          return withShift ? 'Ctrl+Shift+' + key : 'Ctrl+' + key;
+        }
+
+        /** 与 package.json / 各宿主约定一致：全屏与 Dock 始终显示为 Ctrl+空格（Mac 上亦为 Ctrl，非 ⌘）。 */
+        function mmHostFullScreenShortcutLabel() {
+          return currentLang === 'zh' ? 'Ctrl+空格' : 'Ctrl+Space';
+        }
+
+        function mmHostToggleDockShortcutLabel() {
+          return currentLang === 'zh' ? 'Ctrl+Shift+空格' : 'Ctrl+Shift+Space';
+        }
+
+        function mmTitleWithShortcut(baseLabel, shortcut) {
+          if (!shortcut) return baseLabel || '';
+          if (!baseLabel) return shortcut;
+          return baseLabel + ' — ' + shortcut;
+        }
+
+        /** [图标, 菜单文案 i18n 键] — 工具栏仅显示图标，快捷键随平台刷新 */
         const toolbarLabelMap = {
-          btnNew: ['New', '＋', 'Ctrl/Cmd+N'],
-          btnOpen: ['Open', '📂', 'Ctrl/Cmd+O'],
-          btnSave: ['Save', '💾', 'Ctrl/Cmd+S'],
-          btnSaveAs: ['Save As', '🖫', 'Ctrl/Cmd+Shift+S']
+          btnNew: ['＋', 'menuNew', 'N', false],
+          btnOpen: ['📂', 'menuOpen', 'O', false],
+          btnSave: ['💾', 'menuSave', 'S', false],
+          btnSaveAs: ['🖫', 'menuSaveAs', 'S', true]
         };
 
         function applyHtoolbarLabels() {
-          const items = [
-            ['btnNew', 'menuNew'],
-            ['btnOpen', 'menuOpen'],
-            ['btnSave', 'menuSave'],
-            ['btnSaveAs', 'menuSaveAs']
-          ];
-          for (let i = 0; i < items.length; i++) {
-            const id = items[i][0];
-            const menuKey = items[i][1];
-            const btn = document.getElementById(id);
-            if (!btn) continue;
+          for (const id of Object.keys(toolbarLabelMap)) {
             const meta = toolbarLabelMap[id];
             if (!meta) continue;
-            const icon = meta[1];
-            const shortcut = meta[2];
+            const btn = document.getElementById(id);
+            if (!btn) continue;
+            const icon = meta[0];
+            const menuKey = meta[1];
+            const keyLetter = meta[2];
+            const withShift = !!meta[3];
             btn.textContent = icon;
-            const tip = shortcut ? t(menuKey) + ' (' + shortcut + ')' : t(menuKey);
+            const sc = mmChord(keyLetter, withShift);
+            const tip = mmTitleWithShortcut(t(menuKey), sc);
             btn.title = tip;
             btn.setAttribute('aria-label', tip);
+          }
+        }
+
+        /** 顶栏菜单项、菜单摘要、右键菜单与缩放按钮的悬停快捷键说明 */
+        function applyMenuBarSummaryAndContextShortcutTitles() {
+          const C = mmChord;
+          const fsSc = mmHostFullScreenShortcutLabel();
+          const dockSc = mmHostToggleDockShortcutLabel();
+          const delSc = currentLang === 'zh' ? 'Del / 退格' : 'Del / Backspace';
+          const wheelZh = '滚轮';
+          const wheelEn = 'Wheel';
+
+          function setTitle(id, base, shortcut) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.title = mmTitleWithShortcut(base, shortcut);
+          }
+
+          setTitle('menuNew', t('menuNew'), C('N'));
+          setTitle('menuOpen', t('menuOpen'), C('O'));
+          setTitle('menuSave', t('menuSave'), C('S'));
+          setTitle('menuSaveAs', t('menuSaveAs'), C('S', true));
+          setTitle('menuCopy', t('menuCopy'), C('C'));
+          setTitle('menuCut', t('menuCut'), C('X'));
+          setTitle('menuPaste', t('menuPaste'), C('V'));
+          setTitle('menuToggleDock', t('menuToggleDock'), dockSc);
+          setTitle(
+            'menuPromote',
+            t('menuPromote'),
+            currentLang === 'zh' ? 'Alt+←（画布焦点）' : 'Alt+← (canvas focus)'
+          );
+          setTitle(
+            'menuDemote',
+            t('menuDemote'),
+            currentLang === 'zh' ? 'Alt+→（画布焦点）' : 'Alt+→ (canvas focus)'
+          );
+          setTitle(
+            'menuExpand',
+            t('menuExpand'),
+            currentLang === 'zh' ? '画布 ↑↓ 选中后点节点展开钮' : 'Select with ↑↓, use node expander'
+          );
+          setTitle(
+            'menuCollapse',
+            t('menuCollapse'),
+            currentLang === 'zh' ? '画布 ↑↓ 选中后点节点展开钮' : 'Select with ↑↓, use node expander'
+          );
+          setTitle(
+            'menuToggle',
+            t('menuToggle'),
+            currentLang === 'zh' ? '画布 ↑↓ 选中后点节点展开钮' : 'Select with ↑↓, use node expander'
+          );
+          setTitle(
+            'menuExpandAll',
+            t('menuExpandAll'),
+            currentLang === 'zh' ? '无全局快捷键' : 'No global shortcut'
+          );
+
+          const sumFile = document.getElementById('sumFile');
+          if (sumFile) {
+            sumFile.title =
+              (currentLang === 'zh' ? '内含快捷键：' : 'Includes: ') +
+              C('N') +
+              ' / ' +
+              C('O') +
+              ' / ' +
+              C('S') +
+              ' / ' +
+              C('S', true);
+          }
+          const sumEdit = document.getElementById('sumEdit');
+          if (sumEdit) {
+            sumEdit.title =
+              (currentLang === 'zh' ? '内含快捷键：' : 'Includes: ') +
+              C('C') +
+              ' / ' +
+              C('X') +
+              ' / ' +
+              C('V') +
+              ' / ' +
+              C('A') +
+              (currentLang === 'zh' ? '（全选节点）' : ' (select all nodes)');
+          }
+          const sumModify = document.getElementById('sumModify');
+          if (sumModify) {
+            sumModify.title =
+              (currentLang === 'zh' ? '画布内：' : 'On canvas: ') +
+              'Alt+↑↓ · Alt+←→ · Enter · Tab · ' +
+              delSc;
+          }
+          const sumWindow = document.getElementById('sumWindow');
+          if (sumWindow) {
+            sumWindow.title =
+              (currentLang === 'zh' ? '窗口：' : 'Window: ') + fsSc + ' · ' + dockSc;
+          }
+          const sumView = document.getElementById('sumView');
+          if (sumView) {
+            sumView.title =
+              currentLang === 'zh'
+                ? '视图：' + wheelZh + '缩放；左下角按钮见提示'
+                : 'View: ' + wheelEn + ' zoom; see bottom-left badges';
+          }
+          const sumInsert = document.getElementById('sumInsert');
+          if (sumInsert) {
+            sumInsert.title = currentLang === 'zh' ? '插入：无全局快捷键' : 'Insert: no global shortcuts';
+          }
+          const sumHelp = document.getElementById('sumHelp');
+          if (sumHelp) {
+            sumHelp.title = currentLang === 'zh' ? '帮助与说明' : 'Help and formats';
+          }
+          const sumLanguage = document.getElementById('sumLanguage');
+          if (sumLanguage) {
+            sumLanguage.title = currentLang === 'zh' ? '切换界面语言' : 'Switch UI language';
+          }
+          const sumUiTheme = document.getElementById('sumUiTheme');
+          if (sumUiTheme) {
+            sumUiTheme.title = currentLang === 'zh' ? '浅色 / 深色 / 跟随系统' : 'Light / dark / follow system';
+          }
+          const sumTools = document.getElementById('sumTools');
+          if (sumTools) {
+            sumTools.title = currentLang === 'zh' ? '工具与 MCP 相关' : 'Tools and MCP';
+          }
+
+          setTitle('ctxCopyNode', t('ctxCopyNode'), C('C'));
+          setTitle('ctxCutNode', t('ctxCutNode'), C('X'));
+          setTitle('ctxPasteNode', t('ctxPasteNode'), C('V'));
+          setTitle('ctxDeleteNode', t('ctxDeleteNode'), delSc);
+          setTitle(
+            'ctxAddChild',
+            t('ctxAddChild'),
+            currentLang === 'zh' ? 'Tab（画布焦点）' : 'Tab (canvas focus)'
+          );
+          setTitle(
+            'ctxAddSibling',
+            t('ctxAddSibling'),
+            currentLang === 'zh' ? 'Enter（画布焦点）' : 'Enter (canvas focus)'
+          );
+          setTitle(
+            'ctxPromoteNode',
+            t('ctxPromoteNode'),
+            currentLang === 'zh' ? 'Alt+←（画布）' : 'Alt+← (canvas)'
+          );
+          setTitle(
+            'ctxDemoteNode',
+            t('ctxDemoteNode'),
+            currentLang === 'zh' ? 'Alt+→（画布）' : 'Alt+→ (canvas)'
+          );
+          const noGlobal = currentLang === 'zh' ? '无全局快捷键' : 'No global shortcut';
+          [
+            'menuInsertImage',
+            'menuInsertText',
+            'menuInsertWhiteboard',
+            'menuInsertVideo',
+            'menuInsertAudio',
+            'menuInsertGltf',
+            'menuInsertTable'
+          ].forEach(function (mid) {
+            setTitle(mid, t(mid), noGlobal);
+          });
+          setTitle('menuOpenLog', t('menuOpenLog'), noGlobal);
+          setTitle('menuSupportedFormats', t('menuSupportedFormats'), noGlobal);
+          setTitle('menuToolsNone', t('menuToolsNone'), noGlobal);
+          setTitle('menuUiThemeSystem', t('menuUiThemeSystem'), noGlobal);
+          setTitle('menuUiThemeLight', t('menuUiThemeLight'), noGlobal);
+          setTitle('menuUiThemeDark', t('menuUiThemeDark'), noGlobal);
+          setTitle('menuLangZh', '中文', noGlobal);
+          setTitle('menuLangEn', 'English', noGlobal);
+          setTitle(
+            'ctxPasteCanvas',
+            t('ctxPasteCanvas'),
+            currentLang === 'zh' ? '剪贴板文本（无专用键）' : 'Clipboard text (no dedicated key)'
+          );
+          setTitle(
+            'ctxCenterRoot',
+            t('ctxCenterRoot'),
+            currentLang === 'zh' ? '左下角「根节点」按钮' : 'Bottom-left Root button'
+          );
+          setTitle(
+            'ctxFitAll',
+            t('ctxFitAll'),
+            currentLang === 'zh' ? '左下角「适应」按钮' : 'Bottom-left Fit button'
+          );
+          setTitle(
+            'ctxResetZoom',
+            t('ctxResetZoom'),
+            currentLang === 'zh' ? '左下角「还原」或双击百分比' : 'Bottom-left Reset or double-click %'
+          );
+
+          const btnTitleFs = document.getElementById('btnTitleFullScreen');
+          if (btnTitleFs) {
+            const tip = mmTitleWithShortcut(t('titleBarFullScreen'), fsSc);
+            btnTitleFs.title = tip;
+            btnTitleFs.setAttribute('aria-label', tip);
+          }
+
+          const zFit = document.getElementById('canvasZoomFit');
+          const zRoot = document.getElementById('canvasZoomCenterRoot');
+          const zReset = document.getElementById('canvasZoomReset');
+          const zOut = document.getElementById('canvasZoomOut');
+          const zIn = document.getElementById('canvasZoomIn');
+          if (zFit) {
+            const tip = mmTitleWithShortcut(t('ctxFitAll'), noGlobal);
+            zFit.title = tip;
+            zFit.setAttribute('aria-label', tip);
+          }
+          if (zRoot) {
+            const tip = mmTitleWithShortcut(t('ctxCenterRoot'), noGlobal);
+            zRoot.title = tip;
+            zRoot.setAttribute('aria-label', tip);
+          }
+          if (zReset) {
+            const tip = mmTitleWithShortcut(
+              t('ctxResetZoom'),
+              currentLang === 'zh' ? '双击百分比' : 'Double-click %'
+            );
+            zReset.title = tip;
+            zReset.setAttribute('aria-label', tip);
+          }
+          if (zOut) {
+            const tip = mmTitleWithShortcut(
+              t('zoomOut'),
+              currentLang === 'zh' ? wheelZh + '向下' : wheelEn + ' down'
+            );
+            zOut.title = tip;
+            zOut.setAttribute('aria-label', tip);
+          }
+          if (zIn) {
+            const tip = mmTitleWithShortcut(
+              t('zoomIn'),
+              currentLang === 'zh' ? wheelZh + '向上' : wheelEn + ' up'
+            );
+            zIn.title = tip;
+            zIn.setAttribute('aria-label', tip);
           }
         }
 
@@ -803,8 +1075,13 @@ if (el && el.textContent) {
         }
 
         function resetCanvasShortcutHintsAria() {
+          const wrap = document.getElementById('canvasShortcutHints');
           const trig = document.getElementById('canvasShortcutHintsTrigger');
           const body = document.getElementById('canvasShortcutHintsBody');
+          if (wrap) {
+            wrap.classList.remove('mm-show-shortcuts-popover');
+            delete wrap.dataset.mmShortcutsPinned;
+          }
           if (trig) trig.setAttribute('aria-expanded', 'false');
           if (body) body.setAttribute('aria-hidden', 'true');
         }
@@ -924,11 +1201,6 @@ if (el && el.textContent) {
           byId('appTitleSub', t('appTitleSecondary'));
           const appTitleBarEl = document.getElementById('appTitleBar');
           if (appTitleBarEl) appTitleBarEl.setAttribute('aria-label', t('appTitleBannerAria'));
-          const btnTitleFs = document.getElementById('btnTitleFullScreen');
-          if (btnTitleFs) {
-            btnTitleFs.title = t('titleBarFullScreen');
-            btnTitleFs.setAttribute('aria-label', t('titleBarFullScreen'));
-          }
           const appTitleIconImgEl = document.getElementById('appTitleIconImg');
           const appTitleIconWrapEl = document.getElementById('appTitleIconWrap');
           if (appTitleIconImgEl && appTitleIconWrapEl && !appTitleIconImgEl.dataset.fallbackBound) {
@@ -959,6 +1231,7 @@ if (el && el.textContent) {
           buildDockJsmindThemeGrid();
           refreshDockFromSelection();
           applyHtoolbarLabels();
+          applyMenuBarSummaryAndContextShortcutTitles();
           updateDockMaximizeButtons();
           applySaveTrafficLight(saveTrafficLightState);
         }
@@ -1406,8 +1679,11 @@ if (el && el.textContent) {
                 if (type === ET.select && data && data.evt === 'select_node') {
                   const nid = data.node;
                   selectedNode = nid && jm.get_node ? jm.get_node(nid) : null;
-                  if (canvasWrapEl) {
-                    canvasWrapEl.focus();
+                  if (canvasWrapEl && mindmapHostDrivingSelection === 0) {
+                    const v = jm && jm.view;
+                    if (!v || typeof v.is_editing !== 'function' || !v.is_editing()) {
+                      canvasWrapEl.focus();
+                    }
                   }
                   setSingleSelectStatus(selectedNode);
                   refreshDockFromSelection();
@@ -1554,6 +1830,55 @@ if (el && el.textContent) {
             }
           }
           return null;
+        }
+
+        /**
+         * 选中节点后无需双击：在画布区域焦点下按可打印字符即进入 jsMind 内联编辑，并以该字符作为新标题起点（替换原 topic）。
+         * IME 组合输入过程中不拦截（避免破坏中文等输入）；无 topic 的节点（如部分图片节点）与 jsMind begin_edit 行为一致。
+         */
+        function tryBeginEditSelectedNodeFromKey(e) {
+          if (!jm || !canvasWrapEl || !jsmindContainerEl) return false;
+          const ae = document.activeElement;
+          if (!ae || !canvasWrapEl.contains(ae)) return false;
+          const view = jm.view;
+          if (view && typeof view.is_editing === 'function' && view.is_editing()) return false;
+          if (e.ctrlKey || e.metaKey || e.altKey) return false;
+          if (e.isComposing) return false;
+          if (e.key === 'Dead' || e.key === 'Process') return false;
+          try {
+            if (e.keyCode === 229) return false;
+          } catch (_) {}
+          if (e.key.length !== 1) return false;
+          if (e.key.charCodeAt(0) < 32 && e.key !== '\t') return false;
+          if (
+            e.key === 'Enter' ||
+            e.key === 'Tab' ||
+            e.key === 'Escape' ||
+            e.key === 'Backspace' ||
+            e.key === 'Delete'
+          ) {
+            return false;
+          }
+          if (lassoSelectedNodes && lassoSelectedNodes.length > 1) return false;
+          const node = getActiveSelectedNode();
+          if (!node) return false;
+          if (!node.topic) return false;
+          var begun;
+          try {
+            begun = jm.begin_edit(node);
+          } catch (_) {
+            return false;
+          }
+          if (begun === false) return false;
+          var ed = jsmindContainerEl.querySelector('input.jsmind-editor');
+          if (ed) {
+            ed.value = e.key;
+            var len = ed.value.length;
+            try {
+              ed.setSelectionRange(len, len);
+            } catch (_) {}
+          }
+          return true;
         }
 
         /**
@@ -2429,6 +2754,10 @@ if (el && el.textContent) {
         let panY = 0;
         /** 与 ResizeObserver 配合：记录画布客户区尺寸，仅在「仅尺寸变化」时补偿平移以保持视口中心下的内容不动（全屏/窗口缩放等）。 */
         let lastCanvasWrapObservedSize = { w: 0, h: 0 };
+        /** 还原缩放等操作后跳过一次 RO 的 pan 补偿，避免 VS Code Webview 下子像素/布局滞后误触发平移（看起来像被对齐根节点）。 */
+        let skipNextCanvasWrapResizePan = false;
+        /** MCP / 宿主 executeHostOp：选中新节点时不抢画布焦点、不自动滚视口，减少误触。 */
+        let mindmapHostDrivingSelection = 0;
         let isMiddleDragging = false;
         let dragStartX = 0;
         let dragStartY = 0;
@@ -2559,6 +2888,120 @@ if (el && el.textContent) {
           );
         }
 
+        function isMindModelUnderAncestor(ancestor, node) {
+          if (!ancestor || !node) return false;
+          var p = node;
+          while (p) {
+            if (p === ancestor) return true;
+            p = p.parent;
+          }
+          return false;
+        }
+
+        var reparentDragState = null;
+
+        function cleanupReparentDragListeners() {
+          window.removeEventListener('pointermove', onReparentDragMove, true);
+          window.removeEventListener('pointerup', onReparentDragEnd, true);
+          window.removeEventListener('pointercancel', onReparentDragEnd, true);
+        }
+
+        function onReparentDragMove(e) {
+          var st = reparentDragState;
+          if (!st || e.pointerId !== st.pointerId) return;
+          var dx = e.clientX - st.startX;
+          var dy = e.clientY - st.startY;
+          if (!st.armed && dx * dx + dy * dy >= 64) {
+            st.armed = true;
+            if (st.sourceEl && st.sourceEl.classList) {
+              st.sourceEl.classList.add('mm-node-reparent-source');
+            }
+          }
+          if (st.armed) {
+            try {
+              e.preventDefault();
+            } catch (_) {}
+          }
+        }
+
+        function onReparentDragEnd(e) {
+          var st = reparentDragState;
+          if (!st || e.pointerId !== st.pointerId) return;
+          cleanupReparentDragListeners();
+          var wasArmed = st.armed;
+          var sourceEl = st.sourceEl;
+          var nodeId = st.nodeId;
+          reparentDragState = null;
+          if (sourceEl && sourceEl.classList) {
+            sourceEl.classList.remove('mm-node-reparent-source');
+          }
+          if (!wasArmed || !jm) return;
+          var moving = findNodeById(nodeId);
+          if (!moving) return;
+          if (rootId && String(moving.id) === String(rootId)) return;
+          var under = null;
+          try {
+            if (sourceEl) sourceEl.style.pointerEvents = 'none';
+            under = document.elementFromPoint(e.clientX, e.clientY);
+          } finally {
+            if (sourceEl) sourceEl.style.pointerEvents = '';
+          }
+          var dropEl =
+            under &&
+            under.closest &&
+            (under.closest('jmnode') || under.closest('.jmnode') || under.closest('[nodeid]'));
+          if (!dropEl) return;
+          var rawTid = dropEl.getAttribute ? dropEl.getAttribute('nodeid') : null;
+          if (!rawTid || String(rawTid) === String(nodeId)) return;
+          var target = findNodeById(String(rawTid));
+          if (!target || target === moving) return;
+          if (isMindModelUnderAncestor(moving, target)) return;
+          try {
+            jm.move_node(moving, '_last_', target.id);
+            markContentDirty();
+            selectNodeById(moving.id);
+          } catch (moveErr) {
+            try {
+              notifyInvalidAction(
+                (currentLang === 'zh' ? '无法调整父子关系：' : 'Cannot reparent: ') +
+                  (moveErr && moveErr.message ? moveErr.message : String(moveErr))
+              );
+            } catch (_) {}
+          }
+        }
+
+        function onReparentDragPointerDown(e) {
+          if (!jm || !jsmindContainerEl) return;
+          if (e.button !== 0 || e.ctrlKey || e.metaKey) return;
+          var view = jm.view;
+          if (view && typeof view.is_editing === 'function' && view.is_editing()) return;
+          var t = e.target;
+          if (t && t.closest && t.closest('jmexpander')) return;
+          if (t && t.closest && t.closest('input.jsmind-editor')) return;
+          var el = getNodeElFromTarget(t);
+          if (!el || !jsmindContainerEl.contains(el)) return;
+          var nid = el.getAttribute ? el.getAttribute('nodeid') : null;
+          if (!nid) return;
+          if (rootId && String(nid) === String(rootId)) return;
+          reparentDragState = {
+            nodeId: String(nid),
+            startX: e.clientX,
+            startY: e.clientY,
+            pointerId: e.pointerId,
+            armed: false,
+            sourceEl: el
+          };
+          window.addEventListener('pointermove', onReparentDragMove, true);
+          window.addEventListener('pointerup', onReparentDragEnd, true);
+          window.addEventListener('pointercancel', onReparentDragEnd, true);
+        }
+
+        function installMindNodeReparentDrag() {
+          if (!jsmindContainerEl || jsmindContainerEl.dataset.mmReparentDragBound === '1') return;
+          jsmindContainerEl.dataset.mmReparentDragBound = '1';
+          jsmindContainerEl.addEventListener('pointerdown', onReparentDragPointerDown);
+        }
+
         function addNodeToMultiSelect(nodeEl) {
           if (!nodeEl) return;
           if (!lassoSelectedNodes.includes(nodeEl)) lassoSelectedNodes.push(nodeEl);
@@ -2623,11 +3066,28 @@ if (el && el.textContent) {
           }
         }
 
+        /** Webview 内 getBoundingClientRect 偶发为 0，用 client 尺寸兜底，避免锚点落到 (0,0) 导致整图被误平移（像对齐根节点）。 */
+        function getCanvasWrapAnchorCenter() {
+          if (!canvasWrapEl) return { px: 0, py: 0 };
+          const r = canvasWrapEl.getBoundingClientRect();
+          const cw = canvasWrapEl.clientWidth;
+          const ch = canvasWrapEl.clientHeight;
+          let px = r.width > 0 ? r.width / 2 : cw / 2;
+          let py = r.height > 0 ? r.height / 2 : ch / 2;
+          if (!(px > 0) || !(py > 0)) {
+            px = cw / 2;
+            py = ch / 2;
+          }
+          return { px: px, py: py };
+        }
+
         function syncCanvasWrapResizeAnchor() {
           if (!canvasWrapEl) return;
           const r = canvasWrapEl.getBoundingClientRect();
-          lastCanvasWrapObservedSize.w = r.width;
-          lastCanvasWrapObservedSize.h = r.height;
+          const w = r.width > 0 ? r.width : canvasWrapEl.clientWidth;
+          const h = r.height > 0 ? r.height : canvasWrapEl.clientHeight;
+          lastCanvasWrapObservedSize.w = w;
+          lastCanvasWrapObservedSize.h = h;
         }
 
         /**
@@ -2639,11 +3099,18 @@ if (el && el.textContent) {
           const ro = new ResizeObserver(function () {
             if (!canvasWrapEl) return;
             const r = canvasWrapEl.getBoundingClientRect();
-            const w = r.width;
-            const h = r.height;
+            const w = r.width > 0 ? r.width : canvasWrapEl.clientWidth;
+            const h = r.height > 0 ? r.height : canvasWrapEl.clientHeight;
             const lw = lastCanvasWrapObservedSize.w;
             const lh = lastCanvasWrapObservedSize.h;
-            if (lw > 0 && lh > 0 && (w !== lw || h !== lh)) {
+            if (skipNextCanvasWrapResizePan) {
+              skipNextCanvasWrapResizePan = false;
+              lastCanvasWrapObservedSize.w = w;
+              lastCanvasWrapObservedSize.h = h;
+              return;
+            }
+            // 子像素抖动不应触发平移（插件 Webview 下更常见）
+            if (lw > 0 && lh > 0 && (Math.abs(w - lw) > 0.5 || Math.abs(h - lh) > 0.5)) {
               panX += (w - lw) / 2;
               panY += (h - lh) / 2;
               applyViewTransform();
@@ -2654,6 +3121,7 @@ if (el && el.textContent) {
           ro.observe(canvasWrapEl);
         }
         installCanvasWrapResizeKeepCenter();
+        installMindNodeReparentDrag();
 
         /** 以画布客户区中心为锚点步进缩放（步长与滚轮一致 ±0.1）。 */
         function zoomByStep(delta) {
@@ -2661,11 +3129,9 @@ if (el && el.textContent) {
           const oldScale = zoomScale;
           const newScale = Math.min(3, Math.max(0.3, zoomScale + delta));
           if (newScale === oldScale) return;
-          const rect = canvasWrapEl.getBoundingClientRect();
-          const px = rect.width / 2;
-          const py = rect.height / 2;
-          panX = px - ((px - panX) / oldScale) * newScale;
-          panY = py - ((py - panY) / oldScale) * newScale;
+          const c = getCanvasWrapAnchorCenter();
+          panX = c.px - ((c.px - panX) / oldScale) * newScale;
+          panY = c.py - ((c.py - panY) / oldScale) * newScale;
           zoomScale = newScale;
           applyViewTransform();
         }
@@ -2786,6 +3252,7 @@ if (el && el.textContent) {
             const t = e.target;
             /* 左下角缩放条：须在框选逻辑之前排除，否则捕获阶段 preventDefault 会吃掉按钮 click */
             if (t && t.closest && t.closest('#canvasZoomStack')) return;
+            if (t && t.closest && t.closest('input.jsmind-editor')) return;
             const onNode =
               t &&
               t.closest &&
@@ -3415,14 +3882,19 @@ if (el && el.textContent) {
           if (Math.abs(oldScale - newScale) < 1e-6) {
             return;
           }
-          const rect = canvasWrapEl.getBoundingClientRect();
-          const px = rect.width / 2;
-          const py = rect.height / 2;
-          panX = px - ((px - panX) / oldScale) * newScale;
-          panY = py - ((py - panY) / oldScale) * newScale;
+          const c = getCanvasWrapAnchorCenter();
+          panX = c.px - ((c.px - panX) / oldScale) * newScale;
+          panY = c.py - ((c.py - panY) / oldScale) * newScale;
           zoomScale = newScale;
           applyViewTransform();
-          syncCanvasWrapResizeAnchor();
+          skipNextCanvasWrapResizePan = true;
+          requestAnimationFrame(function () {
+            syncCanvasWrapResizeAnchor();
+            requestAnimationFrame(function () {
+              syncCanvasWrapResizeAnchor();
+              skipNextCanvasWrapResizePan = false;
+            });
+          });
         }
 
         function centerRoot() {
@@ -3728,6 +4200,15 @@ if (el && el.textContent) {
           };
         }
 
+        function withHostDrivingMindSelection(fn) {
+          mindmapHostDrivingSelection++;
+          try {
+            return fn();
+          } finally {
+            mindmapHostDrivingSelection--;
+          }
+        }
+
         function executeHostOp(op, dryRun) {
           if (!op || typeof op !== 'object') throw new Error('invalid op');
           const action = String(op.action || '').trim().toLowerCase();
@@ -3779,7 +4260,9 @@ if (el && el.textContent) {
             if (!dryRun) {
               jm.add_node(parent, newId, topic, null);
               selectNodeById(newId);
-              ensureMindNodeInCanvasView(newId);
+              if (mindmapHostDrivingSelection === 0) {
+                ensureMindNodeInCanvasView(newId);
+              }
             }
             return { action, id: newId, parentId, topic, dryRun: !!dryRun };
           }
@@ -3862,12 +4345,32 @@ if (el && el.textContent) {
         });
 
         // Ensure canvas can receive keyboard focus.
-        elOn(canvasWrapEl, 'mousedown', function () {
+        elOn(canvasWrapEl, 'mousedown', function (e) {
+          const t = e && e.target;
+          if (t && t.closest && t.closest('input.jsmind-editor')) return;
+          if (
+            jm &&
+            jm.view &&
+            typeof jm.view.is_editing === 'function' &&
+            jm.view.is_editing()
+          ) {
+            return;
+          }
           if (canvasWrapEl) {
             canvasWrapEl.focus();
           }
         });
         elOn(canvasWrapEl, 'click', function (e) {
+          const t = e && e.target;
+          if (t && t.closest && t.closest('input.jsmind-editor')) return;
+          if (
+            jm &&
+            jm.view &&
+            typeof jm.view.is_editing === 'function' &&
+            jm.view.is_editing()
+          ) {
+            return;
+          }
           if (canvasWrapEl) {
             canvasWrapEl.focus();
           }
@@ -3971,18 +4474,37 @@ if (el && el.textContent) {
         // Alt+↑/↓ => 调整兄弟顺序；Alt+←/→ => 提升 / 下降；
         // Ctrl/Cmd+C / X 复制剪切子树；V 粘贴见 paste 事件。
         window.addEventListener('keydown', function (e) {
-          // 主窗口任意位置：Ctrl+空格 => 全屏切换（与标题栏全屏按钮一致，优先于输入区拦截）。
-          if (
+          const target0 = e.target;
+          const isTyping0 =
+            target0 &&
+            (
+              target0.tagName === 'INPUT' ||
+              target0.tagName === 'TEXTAREA' ||
+              target0.tagName === 'SELECT' ||
+              target0.isContentEditable
+            );
+          // Ctrl+空格：各宿主统一走 postMessage → 浏览器全屏 API / Electron setFullScreen / VS Code workbench 全屏（与标题栏按钮一致）。
+          // Ctrl+Shift+空格：VS Code 停靠布局（与 package.json 一致）；浏览器与桌面壳忽略。
+          const isCtrlSpaceBar =
             e.ctrlKey &&
             !e.metaKey &&
             !e.altKey &&
-            (e.key === ' ' || e.code === 'Space')
-          ) {
+            (e.key === ' ' || e.code === 'Space');
+          if (isCtrlSpaceBar) {
+            if (e.shiftKey) {
+              if (!isTyping0) {
+                e.preventDefault();
+                e.stopPropagation();
+                vscode.postMessage({ type: 'mindmap:requestToggleDock' });
+              }
+              return;
+            }
             e.preventDefault();
             e.stopPropagation();
             vscode.postMessage({ type: 'mindmap:requestToggleFullScreen' });
             return;
           }
+
           const target = e.target;
           const isTyping =
             target &&
@@ -3993,6 +4515,12 @@ if (el && el.textContent) {
               target.isContentEditable
             );
           if (isTyping) return;
+
+          if (tryBeginEditSelectedNodeFromKey(e)) {
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+          }
 
           invalidActionKeyboardContext = true;
           try {
@@ -4378,25 +4906,72 @@ if (el && el.textContent) {
           const trig = document.getElementById('canvasShortcutHintsTrigger');
           const body = document.getElementById('canvasShortcutHintsBody');
           if (!wrap || !trig || !body) return;
-          function setOpen(open) {
+          var shortcutHintsHideTimer = null;
+          function isPinned() {
+            return wrap.dataset.mmShortcutsPinned === '1';
+          }
+          function setPinned(pinned) {
+            if (pinned) wrap.dataset.mmShortcutsPinned = '1';
+            else delete wrap.dataset.mmShortcutsPinned;
+          }
+          function applyPopoverClass(open) {
+            wrap.classList.toggle('mm-show-shortcuts-popover', !!open);
             trig.setAttribute('aria-expanded', open ? 'true' : 'false');
             body.setAttribute('aria-hidden', open ? 'false' : 'true');
           }
+          function setOpen(open) {
+            applyPopoverClass(open);
+          }
+          function clearHideTimer() {
+            if (shortcutHintsHideTimer != null) {
+              clearTimeout(shortcutHintsHideTimer);
+              shortcutHintsHideTimer = null;
+            }
+          }
           wrap.addEventListener('mouseenter', function () {
+            clearHideTimer();
             setOpen(true);
           });
           wrap.addEventListener('mouseleave', function () {
-            setOpen(false);
+            clearHideTimer();
+            if (isPinned()) return;
+            shortcutHintsHideTimer = setTimeout(function () {
+              shortcutHintsHideTimer = null;
+              setOpen(false);
+            }, 160);
           });
-          wrap.addEventListener('focusin', function () {
-            setOpen(true);
-          });
-          wrap.addEventListener('focusout', function (e) {
-            const rt = e.relatedTarget;
-            if (!(rt instanceof Node) || !wrap.contains(rt)) {
+          trig.addEventListener('click', function (e) {
+            e.stopPropagation();
+            clearHideTimer();
+            const nextPinned = !isPinned();
+            setPinned(nextPinned);
+            if (nextPinned) {
+              setOpen(true);
+            } else {
               setOpen(false);
             }
           });
+          document.addEventListener(
+            'click',
+            function (e) {
+              if (!isPinned()) return;
+              const t = e.target;
+              if (t && wrap.contains(t)) return;
+              setPinned(false);
+              setOpen(false);
+            },
+            true
+          );
+          document.addEventListener(
+            'keydown',
+            function (e) {
+              if (e.key !== 'Escape') return;
+              if (!isPinned() && !wrap.classList.contains('mm-show-shortcuts-popover')) return;
+              setPinned(false);
+              setOpen(false);
+            },
+            true
+          );
         })();
         if (logDialogEl) {
           logDialogEl.addEventListener('click', function (e) {
@@ -4628,12 +5203,15 @@ if (el && el.textContent) {
           }
           if (msg.type === 'mindmap:hostAddNode') {
             try {
-              const result = executeHostOp({
-                action: 'add',
-                parentId: msg.parentId,
-                topic: msg.topic,
-                nodeId: msg.nodeId
-              }, false);
+              let result;
+              withHostDrivingMindSelection(function () {
+                result = executeHostOp({
+                  action: 'add',
+                  parentId: msg.parentId,
+                  topic: msg.topic,
+                  nodeId: msg.nodeId
+                }, false);
+              });
               markContentDirty();
               postHostResponse(msg.requestId, true, result, null);
             } catch (e) {
@@ -4644,11 +5222,14 @@ if (el && el.textContent) {
           }
           if (msg.type === 'mindmap:hostUpdateNodeTitle') {
             try {
-              const result = executeHostOp({
-                action: 'update',
-                nodeId: msg.nodeId,
-                topic: msg.topic
-              }, false);
+              let result;
+              withHostDrivingMindSelection(function () {
+                result = executeHostOp({
+                  action: 'update',
+                  nodeId: msg.nodeId,
+                  topic: msg.topic
+                }, false);
+              });
               markContentDirty();
               postHostResponse(msg.requestId, true, result, null);
             } catch (e) {
@@ -4659,10 +5240,13 @@ if (el && el.textContent) {
           }
           if (msg.type === 'mindmap:hostDeleteNode') {
             try {
-              const result = executeHostOp({
-                action: 'delete',
-                nodeId: msg.nodeId
-              }, false);
+              let result;
+              withHostDrivingMindSelection(function () {
+                result = executeHostOp({
+                  action: 'delete',
+                  nodeId: msg.nodeId
+                }, false);
+              });
               markContentDirty();
               postHostResponse(msg.requestId, true, result, null);
             } catch (e) {
@@ -4699,63 +5283,70 @@ if (el && el.textContent) {
             try {
               const results = [];
               let batchMutated = false;
-              for (let i = 0; i < ops.length; i++) {
-                try {
-                  const op = ops[i];
-                  results.push(executeHostOp(op, dryRun));
-                  if (!dryRun) {
-                    const a = String(op.action || '').trim().toLowerCase();
-                    if (a === 'add' || a === 'update' || a === 'delete' || a === 'move') {
-                      batchMutated = true;
-                      if (!transaction) {
-                        markContentDirty();
+              let batchStopped = false;
+              withHostDrivingMindSelection(function () {
+                for (let i = 0; i < ops.length; i++) {
+                  try {
+                    const op = ops[i];
+                    results.push(executeHostOp(op, dryRun));
+                    if (!dryRun) {
+                      const a = String(op.action || '').trim().toLowerCase();
+                      if (a === 'add' || a === 'update' || a === 'delete' || a === 'move') {
+                        batchMutated = true;
+                        if (!transaction) {
+                          markContentDirty();
+                        }
                       }
                     }
-                  }
-                } catch (stepErr) {
-                  const err = stepErr && stepErr.message ? stepErr.message : String(stepErr);
-                  const detail = strictDetail(i, results);
-                  if (needRollback && beforeTree) {
-                    try {
-                      const restoredMindData = makeMindData(beforeTree);
-                      installMindmapRootAtContentOrigin();
-                      jm.show(restoredMindData, true);
-                      resetMindInnerPanelScroll();
-                      ensureVirtualCanvasSize();
-                      applyViewTransform();
-                      centerRoot();
-                      selectedNode = null;
+                  } catch (stepErr) {
+                    const err = stepErr && stepErr.message ? stepErr.message : String(stepErr);
+                    const detail = strictDetail(i, results);
+                    if (needRollback && beforeTree) {
+                      try {
+                        const restoredMindData = makeMindData(beforeTree);
+                        installMindmapRootAtContentOrigin();
+                        jm.show(restoredMindData, true);
+                        resetMindInnerPanelScroll();
+                        ensureVirtualCanvasSize();
+                        applyViewTransform();
+                        centerRoot();
+                        selectedNode = null;
+                        postHostResponse(
+                          msg.requestId,
+                          false,
+                          Object.assign(
+                            { dryRun, transaction, strict, rolledBack: true },
+                            detail
+                          ),
+                          err
+                        );
+                      } catch (rbErr) {
+                        const rbMsg = rbErr && rbErr.message ? rbErr.message : String(rbErr);
+                        postHostResponse(
+                          msg.requestId,
+                          false,
+                          Object.assign(
+                            { dryRun, transaction, strict, rolledBack: false },
+                            detail
+                          ),
+                          err + '; rollback failed: ' + rbMsg
+                        );
+                      }
+                    } else {
                       postHostResponse(
                         msg.requestId,
                         false,
-                        Object.assign(
-                          { dryRun, transaction, strict, rolledBack: true },
-                          detail
-                        ),
+                        Object.assign({ dryRun, transaction, strict }, detail),
                         err
                       );
-                    } catch (rbErr) {
-                      const rbMsg = rbErr && rbErr.message ? rbErr.message : String(rbErr);
-                      postHostResponse(
-                        msg.requestId,
-                        false,
-                        Object.assign(
-                          { dryRun, transaction, strict, rolledBack: false },
-                          detail
-                        ),
-                        err + '; rollback failed: ' + rbMsg
-                      );
                     }
-                  } else {
-                    postHostResponse(
-                      msg.requestId,
-                      false,
-                      Object.assign({ dryRun, transaction, strict }, detail),
-                      err
-                    );
+                    batchStopped = true;
+                    return;
                   }
-                  return;
                 }
+              });
+              if (batchStopped) {
+                return;
               }
               if (!dryRun && transaction && batchMutated) {
                 markContentDirty();
@@ -5006,6 +5597,9 @@ if (el && el.textContent) {
                     : 'Cannot toggle fullscreen (blocked or not allowed).'
                 );
               }
+              return true;
+            }
+            if (ty === 'mindmap:requestToggleDock') {
               return true;
             }
             return false;

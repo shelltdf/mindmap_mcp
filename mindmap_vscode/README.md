@@ -23,9 +23,9 @@
    - **编辑器标签栏**右键  
    非 `.jm` / `.mmd` / `.xmind` 时会提示不支持；支持的后缀行为与 **`Mindmap: Open Mindmap Editor`** 一致。
 4. 在 Webview 脑图窗口中用顶部菜单栏、左侧工具栏等操作（布局以当前 IDE 为准）。
-5. **快捷键（与全屏 / Dock）**：
-   - **脑图 Webview 内**：**`Ctrl+Space`**（不含 `Cmd`）由页面处理 → 向宿主发送 **`mindmap:requestToggleFullScreen`** → 执行 VS Code **`workbench.action.toggleFullScreen`**（与标题栏 **全屏** 按钮一致，切换 IDE 窗口全屏）。
-   - **扩展贡献键**（`package.json`）：**`ctrl+space` → `mindmapVscode.toggleDock`**（`when: true`），用于「最大化编辑区 / 还原 Dock」联动（侧栏 / 状态栏 / 底部 panel 等）。当键盘焦点在 **脑图 Webview 内**时，**`Ctrl+Space` 通常由页面优先消费**，实际多为全屏；焦点在 **IDE 其他区域**时，可能触发 **toggleDock**。若与预期不符，可在「键盘快捷方式」中调整绑定。
+5. **快捷键（与全屏 / Dock）**（三端语义对齐）：
+   - **`Ctrl+Space`**（不含 `Cmd`）：页面统一 `postMessage` **`mindmap:requestToggleFullScreen`** → **浏览器**：`requestFullscreen` / `exitFullscreen`；**Electron 桌面**：`BrowserWindow.setFullScreen`；**VS Code / Cursor**：`workbench.action.toggleFullScreen`（与标题栏 **全屏** 按钮一致）。扩展侧仍注册同名命令，便于焦点不在 Webview 时触发。
+   - **`Ctrl+Shift+Space`**：页面发送 **`mindmap:requestToggleDock`** → 扩展执行 **`mindmapVscode.toggleDock`**（侧栏 / 面板 / 活动栏 / 状态栏等布局）；浏览器与桌面壳无 Dock 概念，按键由页面消费但宿主无操作。`package.json` 中键位与之一致（`when: mindmapActiveTabIsMindmap`）。
 6. 编辑器内文件快捷键：`Ctrl/Cmd + N` 新建、`Ctrl/Cmd + O` 打开、`Ctrl/Cmd + S` 保存、`Ctrl/Cmd + Shift + S` 另存为。
 
 ## 发布模式（双模式）

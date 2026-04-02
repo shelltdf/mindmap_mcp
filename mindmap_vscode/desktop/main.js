@@ -9,6 +9,8 @@ const PANEL_TS = path.join(ROOT_DIR, 'src', 'panel.ts');
 const JSMIND_JS = path.join(ROOT_DIR, 'media', 'jsmind', 'jsmind.js');
 const JSMIND_CSS = path.join(ROOT_DIR, 'media', 'jsmind', 'jsmind.css');
 const MINDMAP_CORE_JS = path.join(ROOT_DIR, 'media', 'mindmap-core.js');
+const WEBVIEW_THEME_INIT_JS = path.join(ROOT_DIR, 'media', 'webview-theme-init.js');
+const WEBVIEW_APP_JS = path.join(ROOT_DIR, 'media', 'webview-app.js');
 const ICON_PNG = path.join(ROOT_DIR, 'media', 'icon.png');
 
 function getCore() {
@@ -56,7 +58,8 @@ function extractPanelTemplate() {
   const start = src.indexOf(startMarker);
   if (start < 0) throw new Error('Cannot find html template in panel.ts');
   const contentStart = start + 'return /* html */ `'.length;
-  const endMarker = '</html>`;';
+  // panel.ts closes the template with `</html>` then optional `.replace(...)` — not `</html>`;`
+  const endMarker = '</html>`';
   const endIdx = src.indexOf(endMarker, contentStart);
   if (endIdx < 0) throw new Error('Cannot find html template end in panel.ts');
   return src.slice(contentStart, endIdx + '</html>'.length);
@@ -78,7 +81,9 @@ function makeStandaloneHtml(bootTree, ext) {
     .replace(/\$\{jsmindCssUrl\}/g, webviewLikeUri(JSMIND_CSS))
     .replace(/\$\{jsmindScriptUrl\}/g, webviewLikeUri(JSMIND_JS))
     .replace(/\$\{appTitleIconPngUrl\}/g, webviewLikeUri(ICON_PNG))
-    .replace(/\$\{bootJsonForHtml\}/g, bootJsonForHtml);
+    .replace(/\$\{bootJsonForHtml\}/g, bootJsonForHtml)
+    .replace(/___MM_SRC_WEBVIEW_THEME___/g, webviewLikeUri(WEBVIEW_THEME_INIT_JS))
+    .replace(/___MM_SRC_WEBVIEW_APP___/g, webviewLikeUri(WEBVIEW_APP_JS));
   return tpl;
 }
 
@@ -270,6 +275,13 @@ ipcMain.on('vscode:postMessage', async (_evt, msg) => {
     const text = serializeByExt(tree, currentExt);
     fs.writeFileSync(currentFilePath, text, 'utf8');
     sendHostMessage({ type: 'mindmap:savedOk' });
+    return;
+  }
+
+  if (msg.type === 'mindmap:requestToggleFullScreen') {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.setFullScreen(!mainWindow.isFullScreen());
+    }
     return;
   }
 

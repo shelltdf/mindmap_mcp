@@ -2209,6 +2209,21 @@ export class MindmapPanel {
         background-color: var(--mm-bg-canvas);
         position: relative;
       }
+      /*
+       * 画布容器带 tabindex 且脚本会 focus()：系统默认焦环画在盒外，易被父级/overflow 裁切，
+       * Win + Chromium/WebView 下常只剩靠 Dock 一侧的一条黄/金色竖线，且随焦点变化时有时无。
+       * 鼠标聚焦不显示焦环；键盘 Tab 聚焦时用内缩 outline，四边完整、颜色与产品主色一致。
+       */
+      .canvas_wrap:focus:not(:focus-visible) {
+        outline: none;
+      }
+      .canvas_wrap:focus-visible {
+        outline: 2px solid #2563eb;
+        outline-offset: -2px;
+      }
+      html[data-mm-ui='dark'] .canvas_wrap:focus-visible {
+        outline-color: #60a5fa;
+      }
       /* Shortcut strip: hover shows popover; last child of canvas_wrap, z-index over jsMind */
       .canvas-shortcut-hints {
         position: absolute;
@@ -2240,7 +2255,7 @@ export class MindmapPanel {
         max-width: min(420px, 92vw);
       }
       .canvas-shortcut-hints:hover .canvas-shortcut-hints-trigger,
-      .canvas-shortcut-hints:focus-within .canvas-shortcut-hints-trigger {
+      .canvas-shortcut-hints.mm-show-shortcuts-popover .canvas-shortcut-hints-trigger {
         background: rgba(15, 23, 42, 0.72);
       }
       .canvas-shortcut-hints-trigger:focus-visible {
@@ -2252,7 +2267,7 @@ export class MindmapPanel {
         position: absolute;
         left: 0;
         top: 100%;
-        margin: 0;
+        margin: 2px 0 0 0;
         min-width: min(300px, calc(100vw - 48px));
         max-width: min(420px, calc(100vw - 48px));
         max-height: min(70vh, 520px);
@@ -2274,7 +2289,7 @@ export class MindmapPanel {
         user-select: text;
       }
       .canvas-shortcut-hints:hover .canvas-shortcut-hints-popover,
-      .canvas-shortcut-hints:focus-within .canvas-shortcut-hints-popover {
+      .canvas-shortcut-hints.mm-show-shortcuts-popover .canvas-shortcut-hints-popover {
         display: block;
       }
       html[data-mm-ui='dark'] .canvas-shortcut-hints-trigger {
@@ -2282,7 +2297,7 @@ export class MindmapPanel {
         border-color: rgba(255, 255, 255, 0.14);
       }
       html[data-mm-ui='dark'] .canvas-shortcut-hints:hover .canvas-shortcut-hints-trigger,
-      html[data-mm-ui='dark'] .canvas-shortcut-hints:focus-within .canvas-shortcut-hints-trigger {
+      html[data-mm-ui='dark'] .canvas-shortcut-hints.mm-show-shortcuts-popover .canvas-shortcut-hints-trigger {
         background: rgba(15, 23, 42, 0.78);
       }
       .gridLayer {
@@ -2356,6 +2371,18 @@ export class MindmapPanel {
       #jsmind_container svg.jsmind,
       #jsmind_container canvas.jsmind {
         background: transparent !important;
+      }
+      /* 内联标题编辑：父级 .jsmind-inner 为 user-select:none，需显式允许输入框内点选光标与拖选 */
+      #jsmind_container input.jsmind-editor {
+        user-select: text !important;
+        -webkit-user-select: text !important;
+        cursor: text;
+        pointer-events: auto;
+      }
+      jmnode.mm-node-reparent-source,
+      .jmnode.mm-node-reparent-source {
+        opacity: 0.55;
+        cursor: grabbing;
       }
       /* jsMind uses inline display:none to hide collapsed subtrees; never !important display on jmnode. */
       #jsmind_container::-webkit-scrollbar { display: none; }

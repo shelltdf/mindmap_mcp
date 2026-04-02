@@ -152,6 +152,12 @@ export async function activate(context: vscode.ExtensionContext) {
     }
   }
 
+  context.subscriptions.push(
+    vscode.commands.registerCommand('mindmapVscode.toggleWorkbenchFullScreen', async () => {
+      await safeExec('workbench.action.toggleFullScreen');
+    })
+  );
+
   const toggleDockDisposable = vscode.commands.registerCommand('mindmapVscode.toggleDock', async () => {
     dockFocused = !dockFocused;
     if (dockFocused) {
