@@ -65,6 +65,10 @@
 - **`fitAll` / `centerRoot`**：**适应**整图入窗；**根节点**将根主题元素置于客户区中心并重算 `pan`（与「还原」语义分离）。
 - **锚点同步**：在 **`centerRoot`**、**`fitAll`** 等按当前客户区**重算** `pan` 的程序路径末尾调用 **`syncCanvasWrapResizeAnchor()`**，将观测锚点尺寸与当前 `getBoundingClientRect()` 对齐，避免与程序居中逻辑重复补偿。`init` 重置视图状态时 **`lastCanvasWrapObservedSize`** 归零。
 
+## 节点标题内联编辑（`webview-app.js` + vendor `jsmind.js`）
+
+- **`Esc` 取消编辑**：焦点在 **`input.jsmind-editor`** 且 **`!e.isComposing`** 时，**`Escape`**：`preventDefault` / `stopPropagation`；将输入框 **`value`** 设为 **`jm.view.editing_node.topic`**（恢复 vendor 记录的原文），再 **`jm.end_edit()`**（即 **`view.edit_node_end()`**）。vendor 在 **`topic === value`** 时仅 **`render_node`**、**不** **`update_node`**，故**不**触发脏标记与树变更。**Enter** 仍由 jsMind 在输入框上绑定为结束并提交。
+
 ## 格式 Dock、图标 Dock、脑图主题 Dock（右缘条 `panel.ts`）
 
 - **`#mainRowSplitter`（主客户区与右 Dock Area 分界）**：当三个 Dock（**Format / Icon / Theme**）**均为折叠或关闭**（`formatDockCollapsed||formatDockClosed` 等对三者同时成立，即无任何 Dock 在 Dock View 内展开主体）时：`#dockRightStack` 加类 **`mm-dock-stack-fold-only`**——**`#dockAreaView`（`.mm-dock-view`）不显示**（`display: none`），右栏宽度缩至**仅缘条**（`dock-fold-strip`），内联总宽由 CSS **`!important`** 临时让位于 `width: auto`，**展开任一 Dock 后移除该类**即恢复此前内联宽度（若用户曾拖过分割条）。`#mainRowSplitter` 同时置类 **`mm-main-row-splitter-inactive`**（`panel.ts` 样式：`pointer-events: none`、`opacity: 0`、无背景，**仍保留与可拖时相同的 flex 占位宽度**（与 `.main-row-splitter` 默认 `5px` 一致），避免主客户区与 Dock Area 之间**随折叠产生水平跳动**；**不可**拖动调宽；**双击**清除自定义 Dock 宽度仅在分割条**可用**时生效。任一 Dock 展开后由 **`updateMainRowSplitterInteractable()`**（`media/webview-app.js`）恢复分割条与 `aria`/`title`。折叠中若正在拖拽，由事件 **`mm-main-row-splitter-force-end-drag`** 结束拖拽态。**Dock View 内** `.dock-right.collapsed` 使用 **`align-self: stretch`**（非 `flex-end`），避免折叠行贴右导致 **Dock View 左侧大块空白**、与展开态宽度感不一致。

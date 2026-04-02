@@ -400,6 +400,7 @@ if (el && el.textContent) {
               'Alt+←→ — promote / demote\n' +
               'Double-click node — edit topic\n' +
               'Printable key — inline edit (replace topic from first character)\n' +
+              'Esc — cancel inline edit (restore original topic)\n' +
               '\n' +
               '— No selection required —\n' +
               'Wheel — zoom (pointer position is zoom center)\n' +
@@ -587,6 +588,7 @@ if (el && el.textContent) {
               'Alt+←→ — 提升 / 下降\n' +
               '双击节点 — 编辑内容\n' +
               '可打印字符 — 直接内联编辑（从首字起替换原标题）\n' +
+              'Esc — 取消内联编辑（恢复原标题）\n' +
               '\n' +
               '— 无需选中 —\n' +
               '滚轮 — 缩放（以指针位置为缩放中心）\n' +
@@ -4849,6 +4851,29 @@ if (el && el.textContent) {
               target.tagName === 'SELECT' ||
               target.isContentEditable
             );
+          /* 节点内联编辑：Esc 恢复 jsMind 记录的原文并结束编辑（edit_node_end 在值未变时不 update_node） */
+          if (
+            isTyping &&
+            target &&
+            target.classList &&
+            target.classList.contains('jsmind-editor') &&
+            e.key === 'Escape' &&
+            !e.isComposing
+          ) {
+            e.preventDefault();
+            e.stopPropagation();
+            try {
+              const view = jm && jm.view;
+              const node = view && view.editing_node;
+              if (node && node.topic != null) {
+                target.value = node.topic;
+              }
+              if (jm && typeof jm.end_edit === 'function') {
+                jm.end_edit();
+              }
+            } catch (_) {}
+            return;
+          }
           if (isTyping) return;
 
           if (tryBeginEditSelectedNodeFromKey(e)) {

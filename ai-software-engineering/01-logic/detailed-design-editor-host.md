@@ -22,6 +22,10 @@
 - **左上快捷键面板**：`#canvasShortcutHints` 可折叠/展开（默认折叠，**不**持久化）；`#canvasShortcutHintsBody` 为完整列表区，**非**悬停悬浮层唯一入口。
 - **右上可见性**：`#canvasVisibilityPanel` 可折叠/展开（默认展开，**不**持久化）；内部勾选控制网格层、快捷键条、缩放条显示（默认全开，**不**持久化）。
 
+## 节点标题内联编辑
+
+- **Esc**：`webview-app.js` 在 **`input.jsmind-editor`** 上拦截 **`Escape`**，写回 **`editing_node.topic`** 后 **`jm.end_edit()`**，依赖 jsMind **`edit_node_end`** 在文本未变时不 **`update_node`**（取消而非提交）。
+
 ## 右 Dock：格式 / 图标 / 脑图主题
 
 - **格式**：绑定当前选中节点；无选中则禁用并清空。展示值优先 `node.data`，否则从 DOM 读**非选中态**计算样式（避免高亮色）；颜色归一为 hex。
