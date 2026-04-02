@@ -5,11 +5,12 @@
 | 扩展激活、命令注册、AI 命令；**`onWillSaveTextDocument` → `flushPendingWebviewEditsForDocument`**（脑图 `.mmd`/`.jm` 保存前合并画布） | `mindmap_vscode/src/extension.ts` |
 | MCP HTTP 桥、schema 文本 | `mindmap_vscode/src/bridge.ts` |
 | Webview 面板（HTML 壳模板、`asWebviewUri`、换树/MCP/消息）、MCP 持久化提示、格式/主题 Dock、视图平移与 ResizeObserver、`mindmap:requestToggleFullScreen`；`documentIsMindmapBuffer`、`flushPendingWebviewEditsForDocument` / `flushAllPendingWebviewEditsToDocument` | `mindmap_vscode/src/panel.ts` |
-| Webview 主脚本（jsMind、画布、Dock 交互、`relayoutMindAfterVisuals`、`resetZoom`/`centerRoot`/`fitAll`/`zoomByStep` 等） | `mindmap_vscode/media/webview-app.js` |
+| Webview 主脚本（jsMind、画布、Dock 交互、`relayoutMindAfterVisuals`、`resetZoom`/`resetPanToOrigin`/`centerRoot`/`fitAll`、滚轮指针锚点缩放、`zoomByStep`、`installCanvasVisibilityAndDockSplitter` 等） | `mindmap_vscode/media/webview-app.js` |
 | Webview 主题早置（`data-mm-ui`） | `mindmap_vscode/media/webview-theme-init.js` |
 | 本地 HTTP 调试页热更新（轮询 `web_dev_meta.json`） | `mindmap_vscode/media/web-dev-livereload.js`（仅 `out/web_dev.html` 引用） |
-| 页内 Toolbar（`htoolbar-host` / `htoolbarTrack` / `htoolbar`、溢出菜单 `htoolbarOverflowMenu`） | `mindmap_vscode/src/panel.ts`（模板 + 样式）；`mindmap_vscode/media/webview-app.js`（`mmUpdateHtoolbarOverflowVisibility`、`toolbarAction*`） |
-| 右侧 Dock Area（`#dockRightStack`、`dock-area`；各 Dock：`dock-view`+`dock-fold-strip`、关闭与 `dock-closed`） | `mindmap_vscode/src/panel.ts`；`mindmap_vscode/media/webview-app.js`（`apply*DockClosed`、`Window` 菜单 `menuShowDock*`） |
+| 页内 Toolbar（`htoolbarGroupFile` 文件四钮一组、溢出菜单 `htoolbarOverflowMenu`） | `mindmap_vscode/src/panel.ts`（模板 + 样式）；`mindmap_vscode/media/webview-app.js`（`mmUpdateHtoolbarOverflowVisibility`、`toolbarAction*`、`toolbarGroupFile` i18n） |
+| `mainRow` 分割条 `#mainRowSplitter`（拖宽 Dock、**不**持久化宽度；双击恢复默认）；画布左上 `#canvasShortcutHints`（默认折叠，**不**持久化折叠态）；画布右上 `#canvasVisibilityPanel`（默认展开，**不**持久化）；图层勾选默认全开（**不**持久化） | `mindmap_vscode/src/panel.ts`（DOM/CSS）；`mindmap_vscode/media/webview-app.js`（`installCanvasVisibilityAndDockSplitter`） |
+| 右侧 Dock Area（`#dockRightStack`：`#dockAreaView`/`mm-dock-view` + 单一 `#dockFoldStrip`；各 `aside` 仅 `dock-display`；`syncDockFoldStripButtons`） | `mindmap_vscode/src/panel.ts`；`mindmap_vscode/media/webview-app.js`（`apply*DockClosed`、`Window` 菜单 `menuShowDock*`） |
 | CustomTextEditor | `mindmap_vscode/src/mindmapCustomTextEditor.ts` |
 | 视图类型常量 | `mindmap_vscode/src/mindmapEditorViewType.ts` |
 | Cursor `mcp.json` 合并 | `mindmap_vscode/src/mcpCursorConfig.ts` |

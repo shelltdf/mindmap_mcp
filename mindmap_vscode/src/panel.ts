@@ -2052,6 +2052,53 @@ export class MindmapPanel {
         flex-direction: row;
         overflow: hidden;
       }
+      /* Dock Area 与客户区分割条（window-gui-documentation.mdc：边缘拖动） */
+      .main-row-splitter {
+        flex: 0 0 5px;
+        width: 5px;
+        min-width: 5px;
+        align-self: stretch;
+        cursor: col-resize;
+        z-index: 20;
+        box-sizing: border-box;
+        background: linear-gradient(
+          90deg,
+          transparent 0%,
+          var(--mm-border-strong) 20%,
+          var(--mm-border-strong) 80%,
+          transparent 100%
+        );
+        opacity: 0.65;
+      }
+      .main-row-splitter:hover {
+        opacity: 1;
+        background: linear-gradient(
+          90deg,
+          transparent 0%,
+          var(--mm-accent, #2563eb) 15%,
+          var(--mm-accent, #2563eb) 85%,
+          transparent 100%
+        );
+      }
+      html[data-mm-ui='dark'] .main-row-splitter:hover {
+        background: linear-gradient(
+          90deg,
+          transparent 0%,
+          #60a5fa 15%,
+          #60a5fa 85%,
+          transparent 100%
+        );
+      }
+      .main-row-splitter.mm-splitter-dragging {
+        opacity: 1;
+      }
+      /* 全折叠/关闭：不可拖、不可见，但保留与可用时相同的 flex 占位，避免画布与 Dock 区之间空隙随折叠跳动 */
+      .main-row-splitter.mm-main-row-splitter-inactive {
+        pointer-events: none;
+        cursor: default;
+        opacity: 0;
+        background: none;
+      }
 
       /* Top menu bar (File/Edit/View/...) implemented with <details>. */
       .menubar {
@@ -2152,6 +2199,14 @@ export class MindmapPanel {
         padding: var(--mm-space-2) var(--mm-space-3);
         background: transparent;
       }
+      /* 组与组之间使用；同组内按钮紧密排列（如「新建/打开/保存/另存为」文件一组） */
+      .htoolbar-group {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        align-items: center;
+        gap: var(--mm-space-2);
+      }
       .htoolbar-sep {
         flex: 0 0 1px;
         align-self: stretch;
@@ -2239,14 +2294,17 @@ export class MindmapPanel {
         border-color: var(--mm-border-strong);
       }
 
-      .dock-edge,
+      /* 右侧唯一折叠条带：与 mm-dock-view 兄弟，贴窗口右缘（window-gui-documentation Dock Area） */
       .dock-fold-strip {
         flex: 0 0 28px;
         width: 28px;
         min-width: 28px;
+        max-width: 28px;
+        align-self: flex-start;
         display: flex;
         flex-direction: column;
         align-items: center;
+        gap: var(--mm-space-2);
         /* 不设左右 padding，避免缘条内有效宽度过小导致 emoji 溢出 */
         padding: var(--mm-space-2) 0;
         box-sizing: border-box;
@@ -2254,13 +2312,16 @@ export class MindmapPanel {
         border-left: 1px solid var(--mm-border-strong);
         background: var(--mm-bg-dock-edge);
       }
-      /* 展开态 Dock Button 与折叠态区分颜色（停靠按钮始终可见） */
-      .dock-right:not(.collapsed):not(.dock-closed) .dock-edge-btn {
+      /* 展开态 Dock Button 高亮（由脚本挂 mm-dock-edge-expanded；关闭时 mm-dock-fold-btn-hidden） */
+      .dock-fold-strip .dock-edge-btn.mm-dock-edge-expanded {
         background: color-mix(in srgb, var(--mm-accent, #2563eb) 18%, var(--mm-bg-subtle));
         border-color: var(--mm-border-strong);
       }
-      html[data-mm-ui='dark'] .dock-right:not(.collapsed):not(.dock-closed) .dock-edge-btn {
+      html[data-mm-ui='dark'] .dock-fold-strip .dock-edge-btn.mm-dock-edge-expanded {
         background: color-mix(in srgb, #60a5fa 22%, var(--mm-bg-subtle));
+      }
+      .dock-fold-strip .dock-edge-btn.mm-dock-fold-btn-hidden {
+        display: none !important;
       }
       .dock-edge-btn {
         box-sizing: border-box;
@@ -2312,7 +2373,7 @@ export class MindmapPanel {
       html[data-mm-ui='dark'] .canvas_wrap:focus-visible {
         outline-color: #60a5fa;
       }
-      /* Shortcut strip: hover shows popover; last child of canvas_wrap, z-index over jsMind */
+      /* 2D 画布左上：快捷键说明面板（可折叠，默认折叠；window-gui-documentation.mdc） */
       .canvas-shortcut-hints {
         position: absolute;
         left: var(--mm-space-3);
@@ -2321,72 +2382,191 @@ export class MindmapPanel {
         isolation: isolate;
         pointer-events: auto;
         margin: 0;
-        padding: 0;
-      }
-      .canvas-shortcut-hints-trigger {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 7px 12px;
+        padding: 8px 10px 10px;
+        min-width: 120px;
+        max-width: min(420px, 92vw);
         box-sizing: border-box;
         border-radius: var(--mm-radius-sm);
         font-size: 11px;
-        letter-spacing: 0.01em;
         font-weight: 600;
+        line-height: 1.35;
         color: #ffffff;
         text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
         background: rgba(15, 23, 42, 0.55);
         border: 1px solid rgba(255, 255, 255, 0.18);
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
-        cursor: default;
         user-select: none;
-        max-width: min(420px, 92vw);
       }
-      .canvas-shortcut-hints:hover .canvas-shortcut-hints-trigger,
-      .canvas-shortcut-hints.mm-show-shortcuts-popover .canvas-shortcut-hints-trigger {
-        background: rgba(15, 23, 42, 0.72);
+      .canvas-shortcut-hints-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
+        margin: 0 0 6px 0;
       }
-      .canvas-shortcut-hints-trigger:focus-visible {
+      .canvas-shortcut-hints-title {
+        margin: 0;
+        padding: 0;
+        font-size: 11px;
+        letter-spacing: 0.02em;
+        opacity: 0.95;
+        flex: 1;
+        min-width: 0;
+      }
+      .canvas-shortcut-hints-fold {
+        flex: 0 0 auto;
+        margin: 0;
+        padding: 0 5px;
+        min-width: 22px;
+        height: 20px;
+        box-sizing: border-box;
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        border-radius: var(--mm-radius-sm);
+        background: rgba(255, 255, 255, 0.1);
+        color: inherit;
+        cursor: pointer;
+        font-size: 10px;
+        line-height: 1;
+        text-shadow: none;
+      }
+      .canvas-shortcut-hints-fold:hover {
+        background: rgba(255, 255, 255, 0.2);
+      }
+      .canvas-shortcut-hints-fold:focus-visible {
         outline: 2px solid rgba(255, 255, 255, 0.65);
         outline-offset: 1px;
       }
-      .canvas-shortcut-hints-popover {
+      .canvas-shortcut-hints.mm-collapsed {
+        padding-bottom: 8px;
+      }
+      .canvas-shortcut-hints.mm-collapsed .canvas-shortcut-hints-header {
+        margin-bottom: 0;
+      }
+      .canvas-shortcut-hints.mm-collapsed .canvas-shortcut-hints-body {
         display: none;
-        position: absolute;
-        left: 0;
-        top: 100%;
-        margin: 2px 0 0 0;
-        min-width: min(300px, calc(100vw - 48px));
-        max-width: min(420px, calc(100vw - 48px));
+      }
+      .canvas-shortcut-hints-body {
+        margin: 0;
+        padding: 0;
         max-height: min(70vh, 520px);
         overflow-x: hidden;
         overflow-y: auto;
-        padding: 10px 12px 12px;
-        box-sizing: border-box;
         font-size: 11px;
         line-height: 1.55;
         letter-spacing: 0.01em;
+        font-weight: 500;
         white-space: pre-line;
         color: #ffffff;
         text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
-        background: rgba(15, 23, 42, 0.94);
-        border: 1px solid rgba(255, 255, 255, 0.22);
-        border-radius: var(--mm-radius-sm);
-        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.38);
-        pointer-events: auto;
         user-select: text;
+        pointer-events: auto;
       }
-      .canvas-shortcut-hints:hover .canvas-shortcut-hints-popover,
-      .canvas-shortcut-hints.mm-show-shortcuts-popover .canvas-shortcut-hints-popover {
-        display: block;
-      }
-      html[data-mm-ui='dark'] .canvas-shortcut-hints-trigger {
+      html[data-mm-ui='dark'] .canvas-shortcut-hints {
         background: rgba(15, 23, 42, 0.62);
         border-color: rgba(255, 255, 255, 0.14);
       }
-      html[data-mm-ui='dark'] .canvas-shortcut-hints:hover .canvas-shortcut-hints-trigger,
-      html[data-mm-ui='dark'] .canvas-shortcut-hints.mm-show-shortcuts-popover .canvas-shortcut-hints-trigger {
-        background: rgba(15, 23, 42, 0.78);
+      html[data-mm-ui='dark'] .canvas-shortcut-hints-fold {
+        border-color: rgba(255, 255, 255, 0.14);
+      }
+      /* 2D 画布右上：要素可见性（window-gui-documentation.mdc） */
+      .canvas-visibility-panel {
+        position: absolute;
+        right: var(--mm-space-3);
+        top: var(--mm-space-3);
+        z-index: 24;
+        isolation: isolate;
+        pointer-events: auto;
+        margin: 0;
+        padding: 8px 10px 10px;
+        min-width: 132px;
+        max-width: min(220px, 42vw);
+        box-sizing: border-box;
+        border-radius: var(--mm-radius-sm);
+        font-size: 11px;
+        font-weight: 600;
+        line-height: 1.35;
+        color: #ffffff;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+        background: rgba(15, 23, 42, 0.55);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+        user-select: none;
+      }
+      .canvas-visibility-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
+        margin: 0 0 6px 0;
+      }
+      .canvas-visibility-title {
+        margin: 0;
+        padding: 0;
+        font-size: 11px;
+        letter-spacing: 0.02em;
+        opacity: 0.95;
+        flex: 1;
+        min-width: 0;
+      }
+      .canvas-visibility-fold {
+        flex: 0 0 auto;
+        margin: 0;
+        padding: 0 5px;
+        min-width: 22px;
+        height: 20px;
+        box-sizing: border-box;
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        border-radius: var(--mm-radius-sm);
+        background: rgba(255, 255, 255, 0.1);
+        color: inherit;
+        cursor: pointer;
+        font-size: 10px;
+        line-height: 1;
+        text-shadow: none;
+      }
+      .canvas-visibility-fold:hover {
+        background: rgba(255, 255, 255, 0.2);
+      }
+      .canvas-visibility-panel.mm-collapsed {
+        padding-bottom: 8px;
+      }
+      .canvas-visibility-panel.mm-collapsed .canvas-visibility-header {
+        margin-bottom: 0;
+      }
+      .canvas-visibility-panel.mm-collapsed .canvas-visibility-body {
+        display: none;
+      }
+      .canvas-visibility-row {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 8px;
+        margin: 0 0 4px 0;
+        padding: 0;
+        cursor: pointer;
+        font-weight: 500;
+      }
+      .canvas-visibility-row:last-child {
+        margin-bottom: 0;
+      }
+      .canvas-visibility-row input {
+        flex: 0 0 auto;
+        margin: 0;
+        cursor: pointer;
+      }
+      html[data-mm-ui='dark'] .canvas-visibility-panel {
+        background: rgba(15, 23, 42, 0.62);
+        border-color: rgba(255, 255, 255, 0.14);
+      }
+      html[data-mm-ui='dark'] .canvas-visibility-fold {
+        border-color: rgba(255, 255, 255, 0.14);
+      }
+      .gridLayer.mm-canvas-layer-off {
+        display: none !important;
+      }
+      .canvas-shortcut-hints.mm-canvas-layer-off,
+      .canvas-zoom-stack.mm-canvas-layer-off {
+        display: none !important;
       }
       .gridLayer {
         position: absolute;
@@ -2485,12 +2665,12 @@ export class MindmapPanel {
         word-break: break-word;
       }
 
-      /* 右侧 Dock Area：纵向叠放多个 Dock；折叠时折叠按钮区域在右侧上下排列 */
+      /* 右侧 Dock Area：[ mm-dock-view | dock-fold-strip ] 横向兄弟，缘条贴窗右 */
       .dock-right-stack,
       .dock-area.mm-dock-area-right {
         flex: 0 0 auto;
         display: flex;
-        flex-direction: column;
+        flex-direction: row;
         align-items: stretch;
         justify-content: flex-start;
         align-self: stretch;
@@ -2498,16 +2678,42 @@ export class MindmapPanel {
         height: 100%;
         max-height: 100%;
         overflow-x: hidden;
-        overflow-y: auto;
+        overflow-y: hidden;
         background: var(--mm-bg-dock);
         border-left: 1px solid var(--mm-border);
       }
-      /* 每个 Dock：[ 画布侧显示区 | 缘条 ]；展开时分摊纵向剩余高度 */
+      /* 三 Dock 均在 Dock View 内折叠或关闭：不显示 Dock View，右栏缩至缘条宽（内联总宽由 !important 让位，展开任一 Dock 后类移除即恢复内联） */
+      .dock-right-stack.mm-dock-stack-fold-only {
+        flex: 0 0 auto !important;
+        width: auto !important;
+        min-width: 0 !important;
+        max-width: none !important;
+      }
+      .dock-right-stack.mm-dock-stack-fold-only .mm-dock-view {
+        display: none !important;
+      }
+      /* 多 Dock 面板纵向叠放；须 flex-grow:1 — #dockRightStack 有脚本固定总宽时，否则多余宽度会堆在 #dockFoldStrip 右侧形成大块空白 */
+      .mm-dock-view {
+        flex: 1 1 auto;
+        min-width: 0;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        align-self: stretch;
+        overflow-x: hidden;
+        overflow-y: auto;
+        max-height: 100%;
+        background: var(--mm-bg-dock);
+      }
+      /* 每个 Dock：显示区撑满 Dock View 宽度；Dock Button 在并列的 dock-fold-strip 内 */
       .dock-right {
         flex: 0 0 auto;
         display: flex;
         flex-direction: row;
         align-items: stretch;
+        align-self: stretch;
+        width: 100%;
         min-height: 0;
         min-width: 0;
         background: var(--mm-bg-dock);
@@ -2515,16 +2721,17 @@ export class MindmapPanel {
       .dock-right.dock-closed {
         display: none !important;
       }
-      /* 折叠后整行只占缘条宽度，并靠栈的右侧（窗口右缘），避免缘条漂在列中间 */
-      .dock-right-stack .dock-right.collapsed {
+      /* 折叠后显示区宽 0；整行仍横向 stretch，避免贴右产生 Dock View 左侧大块空白（与展开态宽度对齐） */
+      .mm-dock-view .dock-right.collapsed {
         flex: 0 0 auto;
-        align-self: flex-end;
-        width: fit-content;
+        align-self: stretch;
+        width: auto;
+        min-width: 0;
         max-width: 100%;
         align-items: flex-start;
       }
       /* 未最大化：展开高度随内容，不强行占满整列（避免短内容也撑满半屏） */
-      .dock-right-stack .dock-right:not(.collapsed):not(.dock-maximized) {
+      .mm-dock-view .dock-right:not(.collapsed):not(.dock-maximized) {
         flex: 0 0 auto;
         min-height: 0;
       }
@@ -2578,12 +2785,14 @@ export class MindmapPanel {
       .dock-title-btn:hover {
         background: var(--mm-bg-surface);
       }
+      /* 横向上随 Dock View 列变宽撑满（原固定 208px 会在拖宽外侧后留白） */
       .dock-right .dock-display {
-        flex: 0 0 auto;
-        width: 208px;
-        min-width: 208px;
+        flex: 1 1 auto;
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
         padding: 0;
-        border-left: 1px solid var(--mm-border);
+        border-left: none;
         display: flex;
         flex-direction: column;
         gap: 0;
@@ -2591,20 +2800,20 @@ export class MindmapPanel {
         box-sizing: border-box;
         transition: width 0.12s ease, min-width 0.12s ease, padding 0.12s ease, opacity 0.12s ease;
       }
-      /* 最大化时：显示区在横轴上仍固定宽度，纵向上 stretch 占满该 Dock 行高（父级已 flex:1 分到高度） */
+      /* 最大化时：纵向上 stretch 占满该 Dock 行高 */
       .dock-right.dock-maximized:not(.collapsed) .dock-display {
-        flex: 0 0 auto;
+        flex: 1 1 auto;
         align-self: stretch;
         min-height: 0;
       }
       .dock-right .dock-display > .attrContent {
         margin: var(--mm-space-2) var(--mm-space-3) var(--mm-space-3) var(--mm-space-3);
       }
-      .dock-right-stack .dock-right.dock-maximized:not(.collapsed) {
+      .mm-dock-view .dock-right.dock-maximized:not(.collapsed) {
         flex: 1 1 auto !important;
         min-height: 0;
       }
-      .dock-right-stack .dock-right.dock-peer-squash:not(.collapsed) {
+      .mm-dock-view .dock-right.dock-peer-squash:not(.collapsed) {
         flex: 0 0 auto !important;
         min-height: 0;
         max-height: 42%;
@@ -2624,25 +2833,20 @@ export class MindmapPanel {
         align-self: flex-start;
         flex: 0 0 0;
       }
-      /* 折叠后缘条只占按钮高度，内容顶对齐；横向上按钮贴缘条右侧 */
-      .dock-right.collapsed .dock-edge {
-        justify-content: flex-start;
-        align-items: flex-end;
-        padding-top: 4px;
-        padding-bottom: 4px;
-        align-self: stretch;
-        height: auto;
-        min-height: 0;
-      }
-
+      /* 默认随内容增高，避免图标/主题等短内容 Dock 在条带拉伸下出现大块空白 */
       .attrContent {
-        flex: 1 1 auto;
+        flex: 0 1 auto;
         min-height: 0;
         overflow: auto;
         border-radius: var(--mm-radius-lg);
         border: 1px solid var(--mm-border);
         padding: var(--mm-space-3);
         background: var(--mm-bg-surface);
+      }
+      /* 最大化或被挤压时：内容区吃满剩余高度并滚动 */
+      .dock-right.dock-maximized:not(.collapsed) .attrContent,
+      .dock-right.dock-peer-squash:not(.collapsed) .attrContent {
+        flex: 1 1 auto;
       }
       .attrItem { font-size: var(--mm-font-ui); color: var(--mm-text-secondary); margin-bottom: var(--mm-space-3); }
       .dock-form-hint {
@@ -3385,6 +3589,9 @@ export class MindmapPanel {
           <button id="menuCollapse">Collapse</button>
           <button id="menuToggle">Toggle</button>
           <button id="menuExpandAll">Expand All</button>
+          <button id="menuViewCenterRoot">Center root</button>
+          <button id="menuViewFitAll">Fit all</button>
+          <button id="menuViewResetZoom">Reset zoom</button>
         </div>
       </details>
       <details>
@@ -3448,13 +3655,17 @@ export class MindmapPanel {
     <div class="htoolbar-host">
       <div class="htoolbar-track" id="htoolbarTrack">
         <div class="htoolbar" id="htoolbar" role="toolbar" aria-label="Toolbar">
-          <button type="button" id="btnNew">＋</button>
-          <span class="htoolbar-sep" role="separator" aria-hidden="true"></span>
-          <button type="button" id="btnOpen">📂</button>
-          <span class="htoolbar-sep" role="separator" aria-hidden="true"></span>
-          <button type="button" id="btnSave">💾</button>
-          <span class="htoolbar-sep" role="separator" aria-hidden="true"></span>
-          <button type="button" id="btnSaveAs">🖫</button>
+          <div
+            class="htoolbar-group"
+            id="htoolbarGroupFile"
+            role="group"
+            aria-label="File operations"
+          >
+            <button type="button" id="btnNew">＋</button>
+            <button type="button" id="btnOpen">📂</button>
+            <button type="button" id="btnSave">💾</button>
+            <button type="button" id="btnSaveAs">🖫</button>
+          </div>
         </div>
       </div>
       <button
@@ -3490,7 +3701,7 @@ export class MindmapPanel {
         <div id="canvasZoomStack" class="canvas-zoom-stack" role="group">
           <div class="canvas-zoom-actions">
             <button type="button" id="canvasZoomFit" class="canvas-zoom-action-btn" tabindex="0">Fit</button>
-            <button type="button" id="canvasZoomCenterRoot" class="canvas-zoom-action-btn" tabindex="0">Root</button>
+            <button type="button" id="canvasZoomPanOrigin" class="canvas-zoom-action-btn" tabindex="0">Origin</button>
             <button type="button" id="canvasZoomReset" class="canvas-zoom-action-btn" tabindex="0">还原</button>
           </div>
           <div id="canvasZoomBadge" class="canvas-zoom-badge" role="group">
@@ -3499,118 +3710,165 @@ export class MindmapPanel {
             <button type="button" id="canvasZoomIn" class="canvas-zoom-btn" tabindex="0">+</button>
           </div>
         </div>
-        <div class="canvas-shortcut-hints" id="canvasShortcutHints">
-          <div
-            class="canvas-shortcut-hints-trigger"
-            id="canvasShortcutHintsTrigger"
-            tabindex="0"
-            role="button"
-            aria-haspopup="true"
-            aria-expanded="false"
-            aria-controls="canvasShortcutHintsBody"
-          >
-            <span id="canvasShortcutHintsTitleText">Shortcuts</span>
+        <div
+          class="canvas-shortcut-hints mm-collapsed"
+          id="canvasShortcutHints"
+          role="region"
+          aria-labelledby="canvasShortcutHintsTitleText"
+        >
+          <div class="canvas-shortcut-hints-header">
+            <div class="canvas-shortcut-hints-title" id="canvasShortcutHintsTitleText">Shortcuts</div>
+            <button
+              type="button"
+              class="canvas-shortcut-hints-fold"
+              id="canvasShortcutHintsFoldBtn"
+              aria-expanded="false"
+              aria-controls="canvasShortcutHintsBody"
+              title="Expand shortcuts panel — No global shortcut"
+            >
+              ▼
+            </button>
           </div>
           <div
-            class="canvas-shortcut-hints-popover"
+            class="canvas-shortcut-hints-body"
             id="canvasShortcutHintsBody"
             role="region"
-            aria-labelledby="canvasShortcutHintsTrigger"
+            aria-labelledby="canvasShortcutHintsTitleText"
             aria-hidden="true"
           ></div>
         </div>
+        <div
+          class="canvas-visibility-panel"
+          id="canvasVisibilityPanel"
+          role="region"
+          aria-labelledby="canvasVisibilityTitle"
+        >
+          <div class="canvas-visibility-header">
+            <div class="canvas-visibility-title" id="canvasVisibilityTitle">Layers</div>
+            <button
+              type="button"
+              class="canvas-visibility-fold"
+              id="canvasVisibilityFoldBtn"
+              aria-expanded="true"
+              aria-controls="canvasVisibilityBody"
+              title="Collapse panel"
+            >
+              ▲
+            </button>
+          </div>
+          <div class="canvas-visibility-body" id="canvasVisibilityBody">
+            <label class="canvas-visibility-row" for="canvasVisGrid">
+              <input type="checkbox" id="canvasVisGrid" checked />
+              <span id="canvasVisGridLbl">Grid</span>
+            </label>
+            <label class="canvas-visibility-row" for="canvasVisShortcuts">
+              <input type="checkbox" id="canvasVisShortcuts" checked />
+              <span id="canvasVisShortcutsLbl">Shortcuts</span>
+            </label>
+            <label class="canvas-visibility-row" for="canvasVisZoomBar">
+              <input type="checkbox" id="canvasVisZoomBar" checked />
+              <span id="canvasVisZoomBarLbl">Zoom bar</span>
+            </label>
+          </div>
+        </div>
       </div>
+      <div
+        class="main-row-splitter"
+        id="mainRowSplitter"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize dock area"
+        title="Drag to resize dock"
+      ></div>
       <div class="dock-right-stack dock-area mm-dock-area-right" id="dockRightStack" aria-label="Right dock area">
-        <aside class="dock dock-right" id="dockFormat" data-mm-dock="format" aria-label="Format dock">
-          <div class="dock-display dock-view">
-            <div class="dock-titlebar">
-              <span class="dock-title" id="dockFormatTitle">Format</span>
-              <div class="dock-title-actions">
-                <button type="button" class="dock-title-btn" id="btnDockFormatCollapse" title="Collapse">−</button>
-                <button type="button" class="dock-title-btn" id="btnDockFormatMaximize" title="Maximize">□</button>
-                <button type="button" class="dock-title-btn" id="btnDockFormatClose" title="Close">×</button>
-              </div>
-            </div>
-            <div class="attrContent" id="dockFormatBody">
-              <div class="dock-form" id="dockFormatForm">
-                <div class="dock-form-hint" id="dockFormatHint">—</div>
-                <label class="dock-form-row"
-                  ><span class="dock-form-label" id="dockLblNodeId">Node ID</span>
-                  <input type="text" id="dockInputNodeId" class="dock-readonly-input" readonly tabindex="-1" value=""
-                /></label>
-                <label class="dock-form-row"
-                  ><span class="dock-form-label" id="dockLblTopic">Content</span>
-                  <textarea id="dockInputTopic" class="dock-topic-input" rows="4" spellcheck="false"></textarea>
-                </label>
-                <div class="dock-form-row dock-form-row-inline">
-                  <label class="dock-form-field dock-form-field--font"
-                    ><span class="dock-form-label" id="dockLblFont">Font</span>
-                    <select id="dockInputFont"></select
-                  ></label>
-                  <label class="dock-form-field dock-form-field--size"
-                    ><span class="dock-form-label" id="dockLblSize">Size</span>
-                    <input type="number" id="dockInputFontSize" min="8" max="72" step="1" />
-                  </label>
-                </div>
-                <div class="dock-form-row dock-form-row-inline">
-                  <label class="dock-form-field"
-                    ><span class="dock-form-label" id="dockLblColor">Text color</span>
-                    <input type="color" id="dockInputColor" value="#333333" />
-                  </label>
-                  <label class="dock-form-field"
-                    ><span class="dock-form-label" id="dockLblBg">Background</span>
-                    <input type="color" id="dockInputBg" value="#ffffff" />
-                  </label>
-                </div>
-                <div class="dock-form-actions">
-                  <button type="button" id="dockBtnResetFormat" class="dock-apply-btn dock-secondary">
-                    Reset
-                  </button>
+        <div class="mm-dock-view dock-view" id="dockAreaView" aria-label="Dock panels">
+          <aside class="dock dock-right" id="dockFormat" data-mm-dock="format" aria-label="Format dock">
+            <div class="dock-display dock-view">
+              <div class="dock-titlebar">
+                <span class="dock-title" id="dockFormatTitle">Format</span>
+                <div class="dock-title-actions">
+                  <button type="button" class="dock-title-btn" id="btnDockFormatCollapse" title="Collapse">−</button>
+                  <button type="button" class="dock-title-btn" id="btnDockFormatMaximize" title="Maximize">□</button>
+                  <button type="button" class="dock-title-btn" id="btnDockFormatClose" title="Close">×</button>
                 </div>
               </div>
-            </div>
-          </div>
-          <div class="dock-edge dock-fold-strip">
-            <button type="button" id="btnToggleDockFormat" class="dock-edge-btn" title="Format">⚙</button>
-          </div>
-        </aside>
-        <aside class="dock dock-right" id="dockIcon" data-mm-dock="icon" aria-label="Icon dock">
-          <div class="dock-display dock-view">
-            <div class="dock-titlebar">
-              <span class="dock-title" id="dockIconTitle">Icon</span>
-              <div class="dock-title-actions">
-                <button type="button" class="dock-title-btn" id="btnDockIconCollapse" title="Collapse">−</button>
-                <button type="button" class="dock-title-btn" id="btnDockIconMaximize" title="Maximize">□</button>
-                <button type="button" class="dock-title-btn" id="btnDockIconClose" title="Close">×</button>
+              <div class="attrContent" id="dockFormatBody">
+                <div class="dock-form" id="dockFormatForm">
+                  <div class="dock-form-hint" id="dockFormatHint">—</div>
+                  <label class="dock-form-row"
+                    ><span class="dock-form-label" id="dockLblNodeId">Node ID</span>
+                    <input type="text" id="dockInputNodeId" class="dock-readonly-input" readonly tabindex="-1" value=""
+                  /></label>
+                  <label class="dock-form-row"
+                    ><span class="dock-form-label" id="dockLblTopic">Content</span>
+                    <textarea id="dockInputTopic" class="dock-topic-input" rows="4" spellcheck="false"></textarea>
+                  </label>
+                  <div class="dock-form-row dock-form-row-inline">
+                    <label class="dock-form-field dock-form-field--font"
+                      ><span class="dock-form-label" id="dockLblFont">Font</span>
+                      <select id="dockInputFont"></select
+                    ></label>
+                    <label class="dock-form-field dock-form-field--size"
+                      ><span class="dock-form-label" id="dockLblSize">Size</span>
+                      <input type="number" id="dockInputFontSize" min="8" max="72" step="1" />
+                    </label>
+                  </div>
+                  <div class="dock-form-row dock-form-row-inline">
+                    <label class="dock-form-field"
+                      ><span class="dock-form-label" id="dockLblColor">Text color</span>
+                      <input type="color" id="dockInputColor" value="#333333" />
+                    </label>
+                    <label class="dock-form-field"
+                      ><span class="dock-form-label" id="dockLblBg">Background</span>
+                      <input type="color" id="dockInputBg" value="#ffffff" />
+                    </label>
+                  </div>
+                  <div class="dock-form-actions">
+                    <button type="button" id="dockBtnResetFormat" class="dock-apply-btn dock-secondary">
+                      Reset
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
-            <div class="attrContent" id="dockIconBody">
-              <div class="dock-form-hint" id="dockIconHint">—</div>
-              <div class="dock-icon-grid" id="dockIconGrid"></div>
-            </div>
-          </div>
-          <div class="dock-edge dock-fold-strip">
-            <button type="button" id="btnToggleDockIcon" class="dock-edge-btn" title="Icon">🖼</button>
-          </div>
-        </aside>
-        <aside class="dock dock-right" id="dockJsmindTheme" data-mm-dock="theme" aria-label="Mind map theme dock">
-          <div class="dock-display dock-view">
-            <div class="dock-titlebar">
-              <span class="dock-title" id="dockJsmindThemeTitle">Mind map theme</span>
-              <div class="dock-title-actions">
-                <button type="button" class="dock-title-btn" id="btnDockJsmindThemeCollapse" title="Collapse">−</button>
-                <button type="button" class="dock-title-btn" id="btnDockJsmindThemeMaximize" title="Maximize">□</button>
-                <button type="button" class="dock-title-btn" id="btnDockJsmindThemeClose" title="Close">×</button>
+          </aside>
+          <aside class="dock dock-right" id="dockIcon" data-mm-dock="icon" aria-label="Icon dock">
+            <div class="dock-display dock-view">
+              <div class="dock-titlebar">
+                <span class="dock-title" id="dockIconTitle">Icon</span>
+                <div class="dock-title-actions">
+                  <button type="button" class="dock-title-btn" id="btnDockIconCollapse" title="Collapse">−</button>
+                  <button type="button" class="dock-title-btn" id="btnDockIconMaximize" title="Maximize">□</button>
+                  <button type="button" class="dock-title-btn" id="btnDockIconClose" title="Close">×</button>
+                </div>
+              </div>
+              <div class="attrContent" id="dockIconBody">
+                <div class="dock-form-hint" id="dockIconHint">—</div>
+                <div class="dock-icon-grid" id="dockIconGrid"></div>
               </div>
             </div>
-            <div class="attrContent" id="dockJsmindThemeBody">
-              <div class="dock-jsmind-theme-grid" id="dockJsmindThemeGrid"></div>
+          </aside>
+          <aside class="dock dock-right" id="dockJsmindTheme" data-mm-dock="theme" aria-label="Mind map theme dock">
+            <div class="dock-display dock-view">
+              <div class="dock-titlebar">
+                <span class="dock-title" id="dockJsmindThemeTitle">Mind map theme</span>
+                <div class="dock-title-actions">
+                  <button type="button" class="dock-title-btn" id="btnDockJsmindThemeCollapse" title="Collapse">−</button>
+                  <button type="button" class="dock-title-btn" id="btnDockJsmindThemeMaximize" title="Maximize">□</button>
+                  <button type="button" class="dock-title-btn" id="btnDockJsmindThemeClose" title="Close">×</button>
+                </div>
+              </div>
+              <div class="attrContent" id="dockJsmindThemeBody">
+                <div class="dock-jsmind-theme-grid" id="dockJsmindThemeGrid"></div>
+              </div>
             </div>
-          </div>
-          <div class="dock-edge dock-fold-strip">
-            <button type="button" id="btnToggleDockJsmindTheme" class="dock-edge-btn" title="Mind map theme">🎨</button>
-          </div>
-        </aside>
+          </aside>
+        </div>
+        <div class="dock-fold-strip" id="dockFoldStrip" role="toolbar" aria-label="Dock fold buttons">
+          <button type="button" id="btnToggleDockFormat" class="dock-edge-btn" title="Format">⚙</button>
+          <button type="button" id="btnToggleDockIcon" class="dock-edge-btn" title="Icon">🖼</button>
+          <button type="button" id="btnToggleDockJsmindTheme" class="dock-edge-btn" title="Mind map theme">🎨</button>
+        </div>
       </div>
     </div>
     <div class="statusbar statusbarClickable" id="statusbar">

@@ -372,12 +372,22 @@ if (el && el.textContent) {
             zoomOut: 'Zoom out',
             zoomIn: 'Zoom in',
             zoomBadgeFit: 'Fit',
-            zoomBadgeCenterRoot: 'Root',
+            zoomBadgePanOrigin: 'Origin',
+            zoomPanOriginTip:
+              'Re-center the mind map bounding box in the viewport at the current zoom (does not change zoom). Same centering as Fit, without rescaling. To center the root node only, use the canvas context menu or View menu.',
             zoomBadgeReset: 'Reset',
-            zoomStackAria: 'Fit view, center root, reset zoom, and scale controls',
+            zoomStackAria: 'Fit all, re-center pan at current zoom, reset zoom to 100%, and scale controls',
             zoomControlsAria: 'Zoom controls',
+            canvasVisPanelTitle: 'Canvas layers',
+            canvasVisFoldCollapse: 'Collapse layer panel — No global shortcut',
+            canvasVisFoldExpand: 'Expand layer panel — No global shortcut',
+            canvasVisGrid: 'Background grid',
+            canvasVisShortcuts: 'Shortcuts entry',
+            canvasVisZoomBar: 'Zoom controls',
+            mainRowSplitterAria: 'Drag to resize dock area',
             canvasShortcutHintsTitle: 'Shortcuts',
-            canvasShortcutHintsHoverTitle: 'Hover or click to show the full shortcut list',
+            canvasShortcutHintsFoldCollapse: 'Collapse shortcuts panel — No global shortcut',
+            canvasShortcutHintsFoldExpand: 'Expand shortcuts panel — No global shortcut',
             canvasShortcutHints:
               '— After selecting a node —\n' +
               '↑↓ — siblings\n' +
@@ -392,7 +402,7 @@ if (el && el.textContent) {
               'Printable key — inline edit (replace topic from first character)\n' +
               '\n' +
               '— No selection required —\n' +
-              'Wheel — zoom\n' +
+              'Wheel — zoom (pointer position is zoom center)\n' +
               'MMB drag — pan\n' +
               'Drag node onto another — reparent as child\n' +
               'Ctrl+Space — full screen (browser: page fullscreen; desktop: window; VS Code: workbench)\n' +
@@ -433,11 +443,11 @@ if (el && el.textContent) {
             dockIconRocket: 'Rocket',
             dockIconPin: 'Pin',
             htoolbarLabel: 'Toolbar',
+            toolbarGroupFile: 'File operations',
             appTitlePrimary: 'Mindmap',
             appTitleSecondary: 'MindmapEditor',
             appTitleBannerAria: 'Mindmap Editor',
             titleBarFullScreen: 'Full screen — toggle desktop window (VS Code)',
-            defaultChildTopic: 'Subtopic',
             sumFile: 'File',
             sumEdit: 'Edit',
             sumView: 'View',
@@ -464,6 +474,9 @@ if (el && el.textContent) {
             menuCollapse: 'Collapse',
             menuToggle: 'Toggle',
             menuExpandAll: 'Expand All',
+            menuViewCenterRoot: 'Center root in view',
+            menuViewFitAll: 'Fit all in view',
+            menuViewResetZoom: 'Reset zoom to 100%',
             menuInsertImage: 'Insert image',
             menuInsertText: 'Insert text',
             menuInsertWhiteboard: 'Insert whiteboard',
@@ -546,12 +559,22 @@ if (el && el.textContent) {
             zoomOut: '缩小',
             zoomIn: '放大',
             zoomBadgeFit: '适应',
-            zoomBadgeCenterRoot: '根节点',
+            zoomBadgePanOrigin: '原点',
+            zoomPanOriginTip:
+              '按当前缩放将整图包围盒重新居中到视口（不改变缩放）；与「适应」的居中算法一致，但「适应」会同时调整缩放。仅对齐根节点请用画布右键或「视图」中的「根节点居正显示」。',
             zoomBadgeReset: '还原',
-            zoomStackAria: '适应画布、根节点居正、还原缩放与比例缩放',
+            zoomStackAria: '适应画布、当前缩放下重居中、还原缩放与比例缩放',
             zoomControlsAria: '缩放控件',
+            canvasVisPanelTitle: '画布显示',
+            canvasVisFoldCollapse: '收起显示面板 — 无全局快捷键',
+            canvasVisFoldExpand: '展开显示面板 — 无全局快捷键',
+            canvasVisGrid: '背景网格',
+            canvasVisShortcuts: '快捷键入口',
+            canvasVisZoomBar: '缩放条',
+            mainRowSplitterAria: '拖动调整右侧停靠区宽度',
             canvasShortcutHintsTitle: '快捷键',
-            canvasShortcutHintsHoverTitle: '悬停或点击显示完整快捷键列表',
+            canvasShortcutHintsFoldCollapse: '收起快捷键面板 — 无全局快捷键',
+            canvasShortcutHintsFoldExpand: '展开快捷键面板 — 无全局快捷键',
             canvasShortcutHints:
               '— 选中对象后 —\n' +
               '↑↓ — 兄弟\n' +
@@ -566,7 +589,7 @@ if (el && el.textContent) {
               '可打印字符 — 直接内联编辑（从首字起替换原标题）\n' +
               '\n' +
               '— 无需选中 —\n' +
-              '滚轮 — 缩放\n' +
+              '滚轮 — 缩放（以指针位置为缩放中心）\n' +
               '中键拖拽 — 平移\n' +
               '拖拽节点到另一节点 — 成为其子节点（调整父子）\n' +
               'Ctrl+空格 — 全屏（浏览器：页全屏；桌面：窗口；VS Code：工作台）\n' +
@@ -607,11 +630,11 @@ if (el && el.textContent) {
             dockIconRocket: '火箭',
             dockIconPin: '图钉',
             htoolbarLabel: '工具栏',
+            toolbarGroupFile: '文件操作',
             appTitlePrimary: '脑图',
             appTitleSecondary: 'Mindmap 编辑器',
             appTitleBannerAria: '脑图编辑器',
             titleBarFullScreen: '全屏 — 切换桌面窗口全屏（与 VS Code 一致）',
-            defaultChildTopic: '子主题',
             sumFile: '文件',
             sumEdit: '编辑',
             sumView: '视图',
@@ -638,6 +661,9 @@ if (el && el.textContent) {
             menuCollapse: '折叠',
             menuToggle: '切换展开/折叠',
             menuExpandAll: '全部展开',
+            menuViewCenterRoot: '根节点居正显示',
+            menuViewFitAll: '全部显示',
+            menuViewResetZoom: '还原缩放至 100%',
             menuInsertImage: '插入图片',
             menuInsertText: '插入文字',
             menuInsertWhiteboard: '插入白板',
@@ -776,6 +802,7 @@ if (el && el.textContent) {
           const delSc = currentLang === 'zh' ? 'Del / 退格' : 'Del / Backspace';
           const wheelZh = '滚轮';
           const wheelEn = 'Wheel';
+          const noGlobal = currentLang === 'zh' ? '无全局快捷键' : 'No global shortcut';
 
           function setTitle(id, base, shortcut) {
             const el = document.getElementById(id);
@@ -824,6 +851,17 @@ if (el && el.textContent) {
             t('menuExpandAll'),
             currentLang === 'zh' ? '无全局快捷键' : 'No global shortcut'
           );
+          setTitle('menuViewCenterRoot', t('menuViewCenterRoot'), noGlobal);
+          setTitle(
+            'menuViewFitAll',
+            t('menuViewFitAll'),
+            currentLang === 'zh' ? '左下角「适应」' : 'Bottom-left Fit'
+          );
+          setTitle(
+            'menuViewResetZoom',
+            t('menuViewResetZoom'),
+            currentLang === 'zh' ? '左下角「还原」或双击百分比' : 'Bottom-left Reset or double-click %'
+          );
 
           const sumFile = document.getElementById('sumFile');
           if (sumFile) {
@@ -870,8 +908,12 @@ if (el && el.textContent) {
           if (sumView) {
             sumView.title =
               currentLang === 'zh'
-                ? '视图：' + wheelZh + '缩放；左下角按钮见提示'
-                : 'View: ' + wheelEn + ' zoom; see bottom-left badges';
+                ? '视图：' +
+                  wheelZh +
+                  '缩放（指针为缩放中心）；左下角与画布菜单；左上快捷键面板（默认折叠）、右上显示面板'
+                : 'View: ' +
+                  wheelEn +
+                  ' zoom (pointer-centered); bottom-left & canvas menu; top-left shortcuts panel (collapsed by default), top-right visibility panel';
           }
           const sumInsert = document.getElementById('sumInsert');
           if (sumInsert) {
@@ -918,7 +960,6 @@ if (el && el.textContent) {
             t('ctxDemoteNode'),
             currentLang === 'zh' ? 'Alt+→（画布）' : 'Alt+→ (canvas)'
           );
-          const noGlobal = currentLang === 'zh' ? '无全局快捷键' : 'No global shortcut';
           [
             'menuInsertImage',
             'menuInsertText',
@@ -967,7 +1008,7 @@ if (el && el.textContent) {
           }
 
           const zFit = document.getElementById('canvasZoomFit');
-          const zRoot = document.getElementById('canvasZoomCenterRoot');
+          const zPanO = document.getElementById('canvasZoomPanOrigin');
           const zReset = document.getElementById('canvasZoomReset');
           const zOut = document.getElementById('canvasZoomOut');
           const zIn = document.getElementById('canvasZoomIn');
@@ -976,10 +1017,10 @@ if (el && el.textContent) {
             zFit.title = tip;
             zFit.setAttribute('aria-label', tip);
           }
-          if (zRoot) {
-            const tip = mmTitleWithShortcut(t('ctxCenterRoot'), noGlobal);
-            zRoot.title = tip;
-            zRoot.setAttribute('aria-label', tip);
+          if (zPanO) {
+            const tip = mmTitleWithShortcut(t('zoomPanOriginTip'), noGlobal);
+            zPanO.title = tip;
+            zPanO.setAttribute('aria-label', tip);
           }
           if (zReset) {
             const tip = mmTitleWithShortcut(
@@ -1042,6 +1083,25 @@ if (el && el.textContent) {
           );
         }
 
+        /** 共享 dock-fold-strip 上按钮：展开高亮、关闭隐藏（与 aside 上 collapsed/closed 解耦） */
+        function syncDockFoldStripButtons() {
+          const bf = document.getElementById('btnToggleDockFormat');
+          const bi = document.getElementById('btnToggleDockIcon');
+          const bt = document.getElementById('btnToggleDockJsmindTheme');
+          if (bf) {
+            bf.classList.toggle('mm-dock-edge-expanded', !formatDockCollapsed && !formatDockClosed);
+            bf.classList.toggle('mm-dock-fold-btn-hidden', formatDockClosed);
+          }
+          if (bi) {
+            bi.classList.toggle('mm-dock-edge-expanded', !iconDockCollapsed && !iconDockClosed);
+            bi.classList.toggle('mm-dock-fold-btn-hidden', iconDockClosed);
+          }
+          if (bt) {
+            bt.classList.toggle('mm-dock-edge-expanded', !themeDockCollapsed && !themeDockClosed);
+            bt.classList.toggle('mm-dock-fold-btn-hidden', themeDockClosed);
+          }
+        }
+
         function updateDockMaximizeButtons() {
           const mf = document.getElementById('btnDockFormatMaximize');
           const mi = document.getElementById('btnDockIconMaximize');
@@ -1095,6 +1155,8 @@ if (el && el.textContent) {
             cct.title = closeTip;
             cct.setAttribute('aria-label', closeTip);
           }
+          syncDockFoldStripButtons();
+          updateMainRowSplitterInteractable();
         }
 
         function applyFormatDockClosed(closed) {
@@ -1169,16 +1231,42 @@ if (el && el.textContent) {
           updateDockMaximizeButtons();
         }
 
-        function resetCanvasShortcutHintsAria() {
-          const wrap = document.getElementById('canvasShortcutHints');
-          const trig = document.getElementById('canvasShortcutHintsTrigger');
-          const body = document.getElementById('canvasShortcutHintsBody');
-          if (wrap) {
-            wrap.classList.remove('mm-show-shortcuts-popover');
-            delete wrap.dataset.mmShortcutsPinned;
+        /** 至少一个右侧 Dock 在 Dock View 内展开主体（非折叠且未关闭） */
+        function anyRightDockBodyExpanded() {
+          return (
+            (!formatDockCollapsed && !formatDockClosed) ||
+            (!iconDockCollapsed && !iconDockClosed) ||
+            (!themeDockCollapsed && !themeDockClosed)
+          );
+        }
+
+        /** 与 window-gui-documentation：全折叠时分割条不呈现/不可拖；Dock View 整列隐藏，仅保留缘条（内联宽度由 CSS !important 临时覆盖，展开后仍恢复） */
+        function updateMainRowSplitterInteractable() {
+          const el = document.getElementById('mainRowSplitter');
+          const dockStack = document.getElementById('dockRightStack');
+          const dockView = document.getElementById('dockAreaView');
+          const expanded = anyRightDockBodyExpanded();
+          if (dockStack) {
+            dockStack.classList.toggle('mm-dock-stack-fold-only', !expanded);
           }
-          if (trig) trig.setAttribute('aria-expanded', 'false');
-          if (body) body.setAttribute('aria-hidden', 'true');
+          if (dockView) {
+            if (expanded) dockView.removeAttribute('aria-hidden');
+            else dockView.setAttribute('aria-hidden', 'true');
+          }
+          if (!el) return;
+          el.classList.toggle('mm-main-row-splitter-inactive', !expanded);
+          if (!expanded) {
+            try {
+              window.dispatchEvent(new CustomEvent('mm-main-row-splitter-force-end-drag'));
+            } catch (_) {}
+            el.setAttribute('aria-hidden', 'true');
+            el.setAttribute('aria-label', '');
+            el.removeAttribute('title');
+          } else {
+            el.removeAttribute('aria-hidden');
+            el.setAttribute('aria-label', t('mainRowSplitterAria'));
+            el.title = t('mainRowSplitterAria');
+          }
         }
 
         function applyLanguage(lang) {
@@ -1213,6 +1301,9 @@ if (el && el.textContent) {
           byId('menuCollapse', t('menuCollapse'));
           byId('menuToggle', t('menuToggle'));
           byId('menuExpandAll', t('menuExpandAll'));
+          byId('menuViewCenterRoot', t('menuViewCenterRoot'));
+          byId('menuViewFitAll', t('menuViewFitAll'));
+          byId('menuViewResetZoom', t('menuViewResetZoom'));
           byId('menuToggleDock', t('menuToggleDock'));
           byId('menuShowDockFormat', t('menuShowDockFormat'));
           byId('menuShowDockIcon', t('menuShowDockIcon'));
@@ -1236,17 +1327,17 @@ if (el && el.textContent) {
           if (sbTitleEl) sbTitleEl.title = t('statusbarLogHint');
           if (canvasZoomValueEl) canvasZoomValueEl.title = t('zoomDblClickReset');
           const zFit = document.getElementById('canvasZoomFit');
-          const zRoot = document.getElementById('canvasZoomCenterRoot');
+          const zPanO = document.getElementById('canvasZoomPanOrigin');
           const zReset = document.getElementById('canvasZoomReset');
           if (zFit) {
             zFit.textContent = t('zoomBadgeFit');
             zFit.title = t('ctxFitAll');
             zFit.setAttribute('aria-label', t('ctxFitAll'));
           }
-          if (zRoot) {
-            zRoot.textContent = t('zoomBadgeCenterRoot');
-            zRoot.title = t('ctxCenterRoot');
-            zRoot.setAttribute('aria-label', t('ctxCenterRoot'));
+          if (zPanO) {
+            zPanO.textContent = t('zoomBadgePanOrigin');
+            zPanO.title = t('zoomPanOriginTip');
+            zPanO.setAttribute('aria-label', t('zoomPanOriginTip'));
           }
           if (zReset) {
             zReset.textContent = t('zoomBadgeReset');
@@ -1269,14 +1360,34 @@ if (el && el.textContent) {
           if (canvasZoomBadgeEl) {
             canvasZoomBadgeEl.setAttribute('aria-label', t('zoomControlsAria'));
           }
+          byId('canvasVisibilityTitle', t('canvasVisPanelTitle'));
+          byId('canvasVisGridLbl', t('canvasVisGrid'));
+          byId('canvasVisShortcutsLbl', t('canvasVisShortcuts'));
+          byId('canvasVisZoomBarLbl', t('canvasVisZoomBar'));
+          (function refreshCanvasVisFoldI18n() {
+            const foldBtn = document.getElementById('canvasVisibilityFoldBtn');
+            const visPanel = document.getElementById('canvasVisibilityPanel');
+            if (!foldBtn || !visPanel) return;
+            const collapsed = visPanel.classList.contains('mm-collapsed');
+            const tip = t(collapsed ? 'canvasVisFoldExpand' : 'canvasVisFoldCollapse');
+            foldBtn.title = tip;
+            foldBtn.setAttribute('aria-label', tip);
+          })();
+          updateMainRowSplitterInteractable();
           byId('canvasShortcutHintsTitleText', t('canvasShortcutHintsTitle'));
-          const trigShortcut = document.getElementById('canvasShortcutHintsTrigger');
-          if (trigShortcut) trigShortcut.title = t('canvasShortcutHintsHoverTitle');
           const canvasShortcutHintsBodyEl = document.getElementById('canvasShortcutHintsBody');
           if (canvasShortcutHintsBodyEl) {
             canvasShortcutHintsBodyEl.textContent = t('canvasShortcutHints');
           }
-          resetCanvasShortcutHintsAria();
+          (function refreshShortcutPanelFoldI18n() {
+            const foldBtn = document.getElementById('canvasShortcutHintsFoldBtn');
+            const wrap = document.getElementById('canvasShortcutHints');
+            if (!foldBtn || !wrap) return;
+            const collapsed = wrap.classList.contains('mm-collapsed');
+            const tip = t(collapsed ? 'canvasShortcutHintsFoldExpand' : 'canvasShortcutHintsFoldCollapse');
+            foldBtn.title = tip;
+            foldBtn.setAttribute('aria-label', tip);
+          })();
           byId('objCtxTitle', t('objCtxTitle'));
           byId('canvasCtxTitle', t('canvasCtxTitle'));
           byId('ctxAddChild', t('ctxAddChild'));
@@ -1295,6 +1406,8 @@ if (el && el.textContent) {
           byId('errorDialogConfirm', t('dialogConfirm'));
           const htb = document.getElementById('htoolbar');
           if (htb) htb.setAttribute('aria-label', t('htoolbarLabel'));
+          const hgf = document.getElementById('htoolbarGroupFile');
+          if (hgf) hgf.setAttribute('aria-label', t('toolbarGroupFile'));
           const drs = document.getElementById('dockRightStack');
           if (drs) drs.setAttribute('aria-label', t('dockAreaRightAria'));
           const hob = document.getElementById('htoolbarOverflowBtn');
@@ -3358,6 +3471,8 @@ if (el && el.textContent) {
             const t = e.target;
             /* 左下角缩放条：须在框选逻辑之前排除，否则捕获阶段 preventDefault 会吃掉按钮 click */
             if (t && t.closest && t.closest('#canvasZoomStack')) return;
+            if (t && t.closest && t.closest('#canvasVisibilityPanel')) return;
+            if (t && t.closest && t.closest('#canvasShortcutHints')) return;
             if (t && t.closest && t.closest('input.jsmind-editor')) return;
             const onNode =
               t &&
@@ -3369,6 +3484,18 @@ if (el && el.textContent) {
                 t.closest('jmnode')
               );
             if (onNode) return;
+
+            /* 内联编辑时点空白：须结束编辑（失焦），但勿启动框选 */
+            try {
+              if (
+                jm &&
+                jm.view &&
+                typeof jm.view.is_editing === 'function' &&
+                jm.view.is_editing()
+              ) {
+                return;
+              }
+            } catch (_) {}
 
             isLassoSelecting = true;
             lassoStartX = e.clientX;
@@ -4003,6 +4130,53 @@ if (el && el.textContent) {
           });
         }
 
+        /** 当前话题节点在 jsMind 容器内的轴对齐包围盒；无节点时 `null`。 */
+        function getMindmapContentBoundsPx() {
+          if (!jsmindContainerEl) return null;
+          const nodes = getMindmapTopicElements();
+          if (!nodes.length) return null;
+          let minX = Infinity;
+          let minY = Infinity;
+          let maxX = -Infinity;
+          let maxY = -Infinity;
+          for (const n of nodes) {
+            minX = Math.min(minX, n.offsetLeft);
+            minY = Math.min(minY, n.offsetTop);
+            maxX = Math.max(maxX, n.offsetLeft + n.offsetWidth);
+            maxY = Math.max(maxY, n.offsetTop + n.offsetHeight);
+          }
+          if (!(minX <= maxX && minY <= maxY)) return null;
+          return { minX: minX, minY: minY, maxX: maxX, maxY: maxY };
+        }
+
+        /** 在当前 `zoomScale` 下设置 `pan`，使 `bounds` 中心落在画布客户区中心（不改变缩放）。与 `fitAll` 居中段一致。 */
+        function applyPanToCenterContentBounds(bounds) {
+          if (!bounds || !canvasWrapEl) return;
+          const boundsW = Math.max(1, bounds.maxX - bounds.minX);
+          const boundsH = Math.max(1, bounds.maxY - bounds.minY);
+          const wrapRect = canvasWrapEl.getBoundingClientRect();
+          panX = wrapRect.width / 2 - (bounds.minX + boundsW / 2) * zoomScale;
+          panY = wrapRect.height / 2 - (bounds.minY + boundsH / 2) * zoomScale;
+          applyViewTransform();
+          syncCanvasWrapResizeAnchor();
+        }
+
+        /**
+         * 规则「原点」：不改变 zoom，按当前缩放将**整图包围盒**重新居中到视口（与「适应」的居中公式一致，但不重算缩放）。
+         * 避免 `pan=0` 与 jsMind 布局坐标不一致导致「适应后再点原点整图飞出视口」。无图元时仍平移归零。
+         */
+        function resetPanToOrigin() {
+          const b = getMindmapContentBoundsPx();
+          if (!b) {
+            panX = 0;
+            panY = 0;
+            applyViewTransform();
+            syncCanvasWrapResizeAnchor();
+            return;
+          }
+          applyPanToCenterContentBounds(b);
+        }
+
         function centerRoot() {
           if (!jm || !canvasWrapEl || !jsmindContainerEl) return;
           const rootNode = jm.get_root ? jm.get_root() : null;
@@ -4033,29 +4207,16 @@ if (el && el.textContent) {
 
         function fitAll() {
           if (!canvasWrapEl || !jsmindContainerEl) return;
-          const nodes = getMindmapTopicElements();
-          if (!nodes.length) return;
-
-          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-          for (const n of nodes) {
-            minX = Math.min(minX, n.offsetLeft);
-            minY = Math.min(minY, n.offsetTop);
-            maxX = Math.max(maxX, n.offsetLeft + n.offsetWidth);
-            maxY = Math.max(maxY, n.offsetTop + n.offsetHeight);
-          }
-
-          const boundsW = Math.max(1, maxX - minX);
-          const boundsH = Math.max(1, maxY - minY);
+          const bounds = getMindmapContentBoundsPx();
+          if (!bounds) return;
+          const boundsW = Math.max(1, bounds.maxX - bounds.minX);
+          const boundsH = Math.max(1, bounds.maxY - bounds.minY);
           const margin = 40;
           const wrapRect = canvasWrapEl.getBoundingClientRect();
           const sx = (wrapRect.width - margin) / boundsW;
           const sy = (wrapRect.height - margin) / boundsH;
           zoomScale = Math.min(3, Math.max(0.3, Math.min(sx, sy)));
-
-          panX = wrapRect.width / 2 - (minX + boundsW / 2) * zoomScale;
-          panY = wrapRect.height / 2 - (minY + boundsH / 2) * zoomScale;
-          applyViewTransform();
-          syncCanvasWrapResizeAnchor();
+          applyPanToCenterContentBounds(bounds);
         }
 
         function getMindNodeTopicElement(mnode) {
@@ -4559,14 +4720,6 @@ if (el && el.textContent) {
         elOn(canvasWrapEl, 'mousedown', function (e) {
           const t = e && e.target;
           if (t && t.closest && t.closest('input.jsmind-editor')) return;
-          if (
-            jm &&
-            jm.view &&
-            typeof jm.view.is_editing === 'function' &&
-            jm.view.is_editing()
-          ) {
-            return;
-          }
           if (canvasWrapEl) {
             canvasWrapEl.focus();
           }
@@ -4574,14 +4727,6 @@ if (el && el.textContent) {
         elOn(canvasWrapEl, 'click', function (e) {
           const t = e && e.target;
           if (t && t.closest && t.closest('input.jsmind-editor')) return;
-          if (
-            jm &&
-            jm.view &&
-            typeof jm.view.is_editing === 'function' &&
-            jm.view.is_editing()
-          ) {
-            return;
-          }
           if (canvasWrapEl) {
             canvasWrapEl.focus();
           }
@@ -4603,27 +4748,6 @@ if (el && el.textContent) {
             }
             refreshDockFromSelection();
           });
-        });
-
-        // Double-click node => jsMind default inline edit (begin_edit). Double-click blank canvas => add child.
-        elOn(jsmindContainerEl, 'dblclick', function (e) {
-          if (!jm || !jsmindContainerEl) return;
-          const onNode = e.target ? getNodeElFromTarget(e.target) : null;
-          if (onNode) {
-            return;
-          }
-          const parent = getActiveSelectedNode() || (jm.get_root ? jm.get_root() : null);
-          if (!parent) return;
-          const newId = allocateNextNodeId();
-          const topic = t('defaultChildTopic');
-          jm.add_node(parent, newId, topic, null);
-          markContentDirty();
-          selectNodeById(newId);
-          ensureMindNodeInCanvasView(newId);
-          try {
-            e.preventDefault();
-            e.stopPropagation();
-          } catch (_) {}
         });
 
         elOn(
@@ -5074,9 +5198,9 @@ if (el && el.textContent) {
           e.stopPropagation();
           fitAll();
         });
-        elOn(document.getElementById('canvasZoomCenterRoot'), 'click', function (e) {
+        elOn(document.getElementById('canvasZoomPanOrigin'), 'click', function (e) {
           e.stopPropagation();
-          centerRoot();
+          resetPanToOrigin();
         });
         elOn(document.getElementById('canvasZoomReset'), 'click', function (e) {
           e.stopPropagation();
@@ -5090,6 +5214,238 @@ if (el && el.textContent) {
           e.stopPropagation();
           zoomByStep(0.1);
         });
+
+        (function installCanvasVisibilityAndDockSplitter() {
+          /* 界面布局不写入 localStorage：每次打开使用默认（图层勾选、面板折叠、Dock 区宽度均不持久化） */
+          const gridEl = document.getElementById('gridLayer');
+          const shEl = document.getElementById('canvasShortcutHints');
+          const zbEl = document.getElementById('canvasZoomStack');
+          const cg = document.getElementById('canvasVisGrid');
+          const cs = document.getElementById('canvasVisShortcuts');
+          const cz = document.getElementById('canvasVisZoomBar');
+          const visPanel = document.getElementById('canvasVisibilityPanel');
+          const foldBtn = document.getElementById('canvasVisibilityFoldBtn');
+
+          function readBool(_key, defTrue) {
+            return defTrue;
+          }
+          function writeBool(_key, _on) {}
+          function applyLayerVisibility() {
+            if (gridEl) gridEl.classList.toggle('mm-canvas-layer-off', cg && !cg.checked);
+            if (shEl) shEl.classList.toggle('mm-canvas-layer-off', cs && !cs.checked);
+            if (zbEl) zbEl.classList.toggle('mm-canvas-layer-off', cz && !cz.checked);
+          }
+          if (cg) {
+            cg.checked = readBool(null, true);
+            cg.addEventListener('change', function () {
+              writeBool(null, cg.checked);
+              applyLayerVisibility();
+            });
+          }
+          if (cs) {
+            cs.checked = readBool(null, true);
+            cs.addEventListener('change', function () {
+              writeBool(null, cs.checked);
+              applyLayerVisibility();
+            });
+          }
+          if (cz) {
+            cz.checked = readBool(null, true);
+            cz.addEventListener('change', function () {
+              writeBool(null, cz.checked);
+              applyLayerVisibility();
+            });
+          }
+          applyLayerVisibility();
+
+          function readPanelCollapsed() {
+            return false;
+          }
+          function writePanelCollapsed(_collapsed) {}
+          function applyVisPanelFold(collapsed) {
+            if (!visPanel) return;
+            visPanel.classList.toggle('mm-collapsed', collapsed);
+            if (foldBtn) {
+              foldBtn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+              foldBtn.textContent = collapsed ? '▼' : '▲';
+              const tip = t(collapsed ? 'canvasVisFoldExpand' : 'canvasVisFoldCollapse');
+              foldBtn.title = tip;
+              foldBtn.setAttribute('aria-label', tip);
+            }
+            writePanelCollapsed(collapsed);
+          }
+          if (visPanel && foldBtn) {
+            applyVisPanelFold(readPanelCollapsed());
+            elOn(foldBtn, 'click', function (e) {
+              e.stopPropagation();
+              applyVisPanelFold(!visPanel.classList.contains('mm-collapsed'));
+            });
+          }
+
+          if (visPanel) {
+            elOn(visPanel, 'wheel', function (e) {
+              e.stopPropagation();
+            }, { passive: true });
+            elOn(visPanel, 'mousedown', function (e) {
+              e.stopPropagation();
+            });
+          }
+
+          const scWrap = document.getElementById('canvasShortcutHints');
+          const scFold = document.getElementById('canvasShortcutHintsFoldBtn');
+          const scBody = document.getElementById('canvasShortcutHintsBody');
+          function readShortcutPanelCollapsed() {
+            return true;
+          }
+          function writeShortcutPanelCollapsed(_collapsed) {}
+          function applyShortcutPanelFold(collapsed) {
+            if (!scWrap) return;
+            scWrap.classList.toggle('mm-collapsed', collapsed);
+            if (scFold) {
+              scFold.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+              scFold.textContent = collapsed ? '▼' : '▲';
+              const tip = t(collapsed ? 'canvasShortcutHintsFoldExpand' : 'canvasShortcutHintsFoldCollapse');
+              scFold.title = tip;
+              scFold.setAttribute('aria-label', tip);
+            }
+            if (scBody) scBody.setAttribute('aria-hidden', collapsed ? 'true' : 'false');
+            writeShortcutPanelCollapsed(collapsed);
+          }
+          if (scWrap && scFold) {
+            applyShortcutPanelFold(readShortcutPanelCollapsed());
+            elOn(scFold, 'click', function (e) {
+              e.stopPropagation();
+              applyShortcutPanelFold(!scWrap.classList.contains('mm-collapsed'));
+            });
+            document.addEventListener(
+              'keydown',
+              function (e) {
+                if (e.key !== 'Escape') return;
+                if (logDialogEl && !logDialogEl.classList.contains('hidden')) return;
+                if (!scWrap.classList.contains('mm-collapsed')) {
+                  applyShortcutPanelFold(true);
+                }
+              },
+              true
+            );
+          }
+          if (scWrap) {
+            elOn(scWrap, 'wheel', function (e) {
+              e.stopPropagation();
+            }, { passive: true });
+            elOn(scWrap, 'mousedown', function (e) {
+              e.stopPropagation();
+            });
+          }
+
+          const sp = document.getElementById('mainRowSplitter');
+          const dock = document.getElementById('dockRightStack');
+          const row = sp && sp.parentElement;
+          const MIN_DOCK = 236;
+          if (!sp || !dock || !row || !row.classList.contains('mainRow')) {
+            return;
+          }
+
+          function clampDock(w, maxW) {
+            return Math.max(MIN_DOCK, Math.min(maxW, w));
+          }
+
+          function clearDockUserWidth() {
+            dock.style.flex = '';
+            dock.style.width = '';
+            dock.style.minWidth = '';
+            dock.style.maxWidth = '';
+          }
+
+          function applyDockWidth(px) {
+            const maxW = Math.max(MIN_DOCK, Math.floor(row.getBoundingClientRect().width * 0.92));
+            const w = clampDock(px, maxW);
+            dock.style.flex = '0 0 ' + w + 'px';
+            dock.style.width = w + 'px';
+            dock.style.minWidth = w + 'px';
+            dock.style.maxWidth = w + 'px';
+          }
+
+          let dragging = false;
+          let startX = 0;
+          let startW = 0;
+
+          window.addEventListener('mm-main-row-splitter-force-end-drag', function () {
+            if (!dragging) return;
+            dragging = false;
+            sp.classList.remove('mm-splitter-dragging');
+            try {
+              document.body.style.cursor = '';
+              document.body.style.userSelect = '';
+            } catch (_) {}
+          });
+
+          sp.addEventListener('mousedown', function (e) {
+            if (e.button !== 0) return;
+            if (sp.classList.contains('mm-main-row-splitter-inactive')) return;
+            e.preventDefault();
+            dragging = true;
+            startX = e.clientX;
+            startW = dock.getBoundingClientRect().width;
+            sp.classList.add('mm-splitter-dragging');
+            try {
+              document.body.style.cursor = 'col-resize';
+              document.body.style.userSelect = 'none';
+            } catch (_) {}
+          });
+
+          window.addEventListener('mousemove', function (e) {
+            if (!dragging) return;
+            if (sp.classList.contains('mm-main-row-splitter-inactive')) {
+              dragging = false;
+              sp.classList.remove('mm-splitter-dragging');
+              try {
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+              } catch (_) {}
+              return;
+            }
+            /* 分割条在 Dock 左侧（canvas | splitter | dock）：鼠标右移应缩小 Dock，故 LTR 用 startW - dx。
+             * RTL 下 flex 视觉顺序为 dock | splitter | canvas，符号相反。 */
+            const dx = e.clientX - startX;
+            var rowDir = 'ltr';
+            try {
+              rowDir = getComputedStyle(row).direction || 'ltr';
+            } catch (_) {}
+            var delta = rowDir === 'rtl' ? dx : -dx;
+            applyDockWidth(startW + delta);
+          });
+
+          window.addEventListener('mouseup', function () {
+            if (!dragging) return;
+            dragging = false;
+            sp.classList.remove('mm-splitter-dragging');
+            try {
+              document.body.style.cursor = '';
+              document.body.style.userSelect = '';
+            } catch (_) {}
+            try {
+              window.dispatchEvent(new Event('resize'));
+            } catch (_) {}
+          });
+
+          window.addEventListener('resize', function () {
+            try {
+              var ws = dock.style.width;
+              if (!ws || !/^[\d.]+px$/.test(ws)) return;
+              var v = parseInt(ws, 10);
+              if (v >= MIN_DOCK) applyDockWidth(v);
+            } catch (_) {}
+          });
+
+          sp.addEventListener('dblclick', function (e) {
+            if (sp.classList.contains('mm-main-row-splitter-inactive')) return;
+            e.preventDefault();
+            clearDockUserWidth();
+          });
+
+          updateMainRowSplitterInteractable();
+        })();
 
         if (statusbarEl) {
           statusbarEl.addEventListener('click', function (e) {
@@ -5112,78 +5468,6 @@ if (el && el.textContent) {
         bindByIdClick('menuSupportedFormats', function () {
           showSupportedFormatsDialog();
         });
-        (function bindShortcutHintsHoverAria() {
-          const wrap = document.getElementById('canvasShortcutHints');
-          const trig = document.getElementById('canvasShortcutHintsTrigger');
-          const body = document.getElementById('canvasShortcutHintsBody');
-          if (!wrap || !trig || !body) return;
-          var shortcutHintsHideTimer = null;
-          function isPinned() {
-            return wrap.dataset.mmShortcutsPinned === '1';
-          }
-          function setPinned(pinned) {
-            if (pinned) wrap.dataset.mmShortcutsPinned = '1';
-            else delete wrap.dataset.mmShortcutsPinned;
-          }
-          function applyPopoverClass(open) {
-            wrap.classList.toggle('mm-show-shortcuts-popover', !!open);
-            trig.setAttribute('aria-expanded', open ? 'true' : 'false');
-            body.setAttribute('aria-hidden', open ? 'false' : 'true');
-          }
-          function setOpen(open) {
-            applyPopoverClass(open);
-          }
-          function clearHideTimer() {
-            if (shortcutHintsHideTimer != null) {
-              clearTimeout(shortcutHintsHideTimer);
-              shortcutHintsHideTimer = null;
-            }
-          }
-          wrap.addEventListener('mouseenter', function () {
-            clearHideTimer();
-            setOpen(true);
-          });
-          wrap.addEventListener('mouseleave', function () {
-            clearHideTimer();
-            if (isPinned()) return;
-            shortcutHintsHideTimer = setTimeout(function () {
-              shortcutHintsHideTimer = null;
-              setOpen(false);
-            }, 160);
-          });
-          trig.addEventListener('click', function (e) {
-            e.stopPropagation();
-            clearHideTimer();
-            const nextPinned = !isPinned();
-            setPinned(nextPinned);
-            if (nextPinned) {
-              setOpen(true);
-            } else {
-              setOpen(false);
-            }
-          });
-          document.addEventListener(
-            'click',
-            function (e) {
-              if (!isPinned()) return;
-              const t = e.target;
-              if (t && wrap.contains(t)) return;
-              setPinned(false);
-              setOpen(false);
-            },
-            true
-          );
-          document.addEventListener(
-            'keydown',
-            function (e) {
-              if (e.key !== 'Escape') return;
-              if (!isPinned() && !wrap.classList.contains('mm-show-shortcuts-popover')) return;
-              setPinned(false);
-              setOpen(false);
-            },
-            true
-          );
-        })();
         if (logDialogEl) {
           logDialogEl.addEventListener('click', function (e) {
             if (e.target === logDialogEl) {
@@ -5262,6 +5546,9 @@ if (el && el.textContent) {
         bindByIdClick('menuCollapse', collapseSelected);
         bindByIdClick('menuToggle', toggleSelected);
         bindByIdClick('menuExpandAll', expandAll);
+        bindByIdClick('menuViewCenterRoot', centerRoot);
+        bindByIdClick('menuViewFitAll', fitAll);
+        bindByIdClick('menuViewResetZoom', resetZoom);
         bindByIdClick('menuInsertImage', function () {
           insertEmbedChild('image');
         });

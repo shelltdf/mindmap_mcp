@@ -15,8 +15,12 @@
 
 - 外层对 `#jsmind_container` 使用 `translate(panX, panY) scale(zoom)`（`applyViewTransform`）。
 - **客户区-only 尺寸变化**（非缩放）：`ResizeObserver` 监听 `#canvasWrap`，按 **Δw/2、Δh/2** 修正 `pan`，保持**视口中心**下所见内容稳定；`centerRoot` / `fitAll` 等重算 pan 后同步「锚点」尺寸，避免双计。
-- **滚轮 / 步进缩放**：以视口中心为锚（`zoomByStep`）。
-- **还原缩放（`resetZoom`）**：仅将比例拉回 100%，以**当前视口中心**为锚调整 `pan`（与步进缩放同一几何），**不**整图平移去对齐根节点；对齐根节点由 **`centerRoot`**（UI「根节点」）承担。
+- **滚轮缩放**：以**鼠标指针在 `#canvasWrap` 内的坐标**为锚（与 `window-gui-documentation.mdc` 2D 画布一致）。**加减按钮**（`zoomByStep`）与 **还原缩放**以**视口中心**为锚。
+- **还原缩放（`resetZoom`）**：仅将比例拉回 100%，以**当前视口中心**为锚调整 `pan`，**不**为对齐根节点而平移整图。
+- **原点（`resetPanToOrigin`）**：左下第二钮——**不改变** `zoomScale`，按当前缩放将 **图元包围盒中心** 对齐视口中心（`getMindmapContentBoundsPx` + `applyPanToCenterContentBounds`，与 `fitAll` 居中段同一公式）；无节点时退化为 `panX=panY=0`。**根节点居正**仍为 **`centerRoot`**（对齐根心，非包围盒中心），入口：画布右键 / **视图** 菜单。
+- **主行分割条**：`#mainRowSplitter` 拖动调整 `#dockRightStack` 宽度（**不**写入 `localStorage`，新开/重载为默认宽）；**双击**清除本次内联宽度。**`resize`** 时若存在内联 `width` 仅做钳位。三 Dock **均在 Dock View 内折叠或关闭**时：`#dockRightStack` 加 **`mm-dock-stack-fold-only`**，**`#dockAreaView` 隐藏**，右栏仅 **缘条**；分割条 **`mm-main-row-splitter-inactive`**（与 `updateMainRowSplitterInteractable` 同步）。
+- **左上快捷键面板**：`#canvasShortcutHints` 可折叠/展开（默认折叠，**不**持久化）；`#canvasShortcutHintsBody` 为完整列表区，**非**悬停悬浮层唯一入口。
+- **右上可见性**：`#canvasVisibilityPanel` 可折叠/展开（默认展开，**不**持久化）；内部勾选控制网格层、快捷键条、缩放条显示（默认全开，**不**持久化）。
 
 ## 右 Dock：格式 / 图标 / 脑图主题
 
@@ -39,9 +43,9 @@
 
 ## Webview 单页布局（SDI 与 Dock）
 
-- **SDI**：`panel.ts` 注入的 HTML 在 **单个** Webview 文档内排布：顶栏菜单、`mainRow`（左 Dock + 中央画布 + 右 Dock）、底栏状态栏；**一个标签页对应一份**当前脑图会话，中央画布为唯一主编辑客户区（非 MDI 子窗）。
-- **Toolbar**：页内 **`#htoolbar`**（在 **Dock Area 外**），菜单栏之下、主行之上；分隔条、窄宽度时 **溢出按钮 + 悬浮菜单**（与 `window-gui-documentation.mdc` Toolbar 专节一致）。
-- **右 Dock Area**（`#dockRightStack`，`dock-area`）：多个 **Dock**；每 Dock 内 **`dock-view` / `dock-fold-strip`**（实现类名仍为 `dock-display` / `dock-edge`）兄弟排列，DOM 顺序 **客户区 → Dock View → 折叠按钮区域（贴右缘）**；标题栏 **折叠 / 最大化 / 关闭**，**窗口** 菜单可重新打开被关闭的 Dock。
+- **SDI**：`panel.ts` 注入的 HTML 在 **单个** Webview 文档内排布：顶栏菜单、`mainRow`（**中央画布 `#canvasWrap` | 分割条 `#mainRowSplitter` | 右 `#dockRightStack`**）、底栏状态栏；**一个标签页对应一份**当前脑图会话，中央画布为唯一主编辑客户区（非 MDI 子窗）。
+- **Toolbar**：页内 **`#htoolbar`**（在 **Dock Area 外**），菜单栏之下、主行之上；**新建/打开/保存/另存为** 置于 **`#htoolbarGroupFile`** 单组，组内无分隔；窄宽度时 **溢出按钮 + 悬浮菜单**（与 `window-gui-documentation.mdc` Toolbar 专节一致）。
+- **右 Dock Area**（`#dockRightStack`，`dock-area`）：**`mm-dock-view`（`#dockAreaView`）** 与 **单一 `dock-fold-strip`（`#dockFoldStrip`）** 为兄弟，顺序 **显示区叠放多个 Dock | 折叠条带（贴窗右）**。各 **`aside.dock-right`** 内仅 **`dock-display dock-view`**；**Dock Button** 全部在 **`dock-fold-strip`**；标题栏 **折叠 / 最大化 / 关闭**；**窗口** 菜单可重新打开被关闭的 Dock；条带按钮状态由 **`mm-dock-edge-expanded` / `mm-dock-fold-btn-hidden`** 与脚本 `syncDockFoldStripButtons` 同步。
 - 左右 Dock 的折叠与 `mindmapVscode.toggleDock`（最大化编辑区）联动策略见扩展 README 与 `panel.ts`。
 
 ## 多标签与复用
