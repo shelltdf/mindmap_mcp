@@ -1,0 +1,34 @@
+---
+description: UML Markdown 与代码同步开发模式（uml.sync 与三类 *.md 契约）
+globs: "**/*.{md,uml.md,class.md,code.md}", "**/uml.sync.md"
+alwaysApply: false
+---
+
+# UML ↔ 代码 同步开发（仓库约定）
+
+当用户编辑或提及 `uml.sync.md`、`*.uml.md`、`*.class.md`、`*.code.md` 时，助手应遵守下列契约（权威细节见 `ai-software-engineering/02-physical/uml-vue-sdi/spec.md` 与 `examples/sync-demo/`）。未写 YAML 时，产品默认 **命名空间根** 标量为 **`namespace`**，**代码实现** 一项为 **`impl_cpp_project`** / **`cpp`**；**`sync_profile`** 在 GUI 仅为 **`none`** 或 **`strict`**（默认 **strict**）。路径字段仅写入契约，不访问文件系统；**`namespace_root`** 为唯一路径（非列表）；**`code_impls`** 添加后不在 GUI 内改目录与类型（可删后重加）。
+
+## 文件角色
+
+| 模式 | 职责 |
+|------|------|
+| `uml.sync.md` | 声明 `namespace_root`、`uml_root`、`code_impls`（多套：每项唯一 `root` + `code_type`）、`sync_profile`（YAML front matter）+ **同步规则正文（供 AI 阅读）**；规则按 `sync_profile` 分节（`## strict` 等）；根路径可为相对或绝对；旧键 `namespace_dirs` 与旧版 `code_roots` + 顶层 `code_type` 仍可解析 |
+| `*.uml.md` | **一文件一图**（默认 fenced `mermaid`）；多图在 `uml_root` 下用**多个** `*.uml.md` 拆分，禁止单文件堆多张图 |
+| `*.class.md` | **一文件一类**；类定义契约（推荐 `### ClassName` + 表格）；脚手架默认类名 **helloworld** |
+| `*.code.md` | 全局函数、变量、宏等**抽象契约**（表格/条目，**非**具体语言源码）；**放在各 `namespace_root` 下**（与 `*.class.md` 同树），**不**放在 `code_impls` 代码根内 |
+
+## 同步顺序（默认）
+
+1. 改 **类图 / 包图**（`*.uml.md`）以反映设计意图。  
+2. 更新 **`*.class.md`** 与命名空间/目录对齐（参见 `uml.sync.md` 中 `namespace_root`）。  
+3. 若涉及非类片段，先更新对应 **`namespace_root`** 下的 `*.code.md`，再修改各 **`code_impls`** 翻译单元中的真实代码。  
+4. 若规则正文要求评审/CI 检查，在回复中提醒对应条目。
+
+## 与 AI 协作
+
+- **不要**在未读 `uml.sync.md` 的情况下假设目录结构；若缺失则询问或采用示例结构。  
+- 变更格式契约时，**同步**更新：`02-physical/uml-vue-sdi/spec.md`、`examples/sync-demo/`、本规则中有字段表的小节。
+
+## 非目标
+
+- 本规则**不**替代 GUI 专章；窗口布局见 `window-gui-documentation.mdc` 与概念文档。
