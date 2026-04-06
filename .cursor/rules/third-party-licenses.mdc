@@ -1,6 +1,7 @@
 ---
-description: 自动收集运行时第三方库与数字资产的 license 至项目根目录（不含仅开发依赖）
-alwaysApply: true
+description: 运行时依赖与分发资产的 License 归集到仓库根 THIRD_PARTY_LICENSES*（不含仅 dev 依赖）。
+globs: "**/package.json", "**/pnpm-lock.yaml", "**/package-lock.json", "**/Cargo.toml", "**/go.mod", "**/THIRD_PARTY_LICENSES.md", "**/THIRD_PARTY_LICENSES.txt", "**/licenses/**"
+alwaysApply: false
 ---
 
 # 第三方 License 归集（强制）

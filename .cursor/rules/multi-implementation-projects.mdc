@@ -1,6 +1,6 @@
 ---
-description: 从 02-physical 生成多语言/多前端实现（可共存）
-alwaysApply: true
+description: 按 02-physical 生成或新增实现方案、多语言多前端并存、build.py test.py run.py publish.py 工程闭环。
+alwaysApply: false
 ---
 
 # 多实现项目：基于 02-physical 生成不同代码方案（强制）

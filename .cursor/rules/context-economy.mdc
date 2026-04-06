@@ -1,0 +1,12 @@
+---
+description: 元规则：减少规则与回复的无效上下文占用（Token 经济）
+alwaysApply: true
+---
+
+# 上下文经济（元规则）
+
+- **勿在回复中全文复述**已存在于 `.cursor/rules/*.mdc` 或 `ai-software-engineering/` 的长文；用路径或 `@` 指向即可。
+- **任务无关则不展开**：未涉及 GUI/文档同步/IDL/逆向时，不要主动逐条展开对应长规则；需要时再读文件。
+- **维护时优先**：新增长规约用 `alwaysApply: false` + `globs` 或清晰 `description`；仅真正全局约束用 `alwaysApply: true`。
+- **按需显式加载**：专项讨论可用 `@.cursor/rules/<文件名>.mdc` 拉取细则。
+- **口令与未注入的规则**：用户明确提到「逆向工程 / 同步 rules / 初始化项目 / 多实现 / License」等而对应 `.mdc` 未在上下文中时，**先读取**该文件再执行（勿凭记忆省略约束）。

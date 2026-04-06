@@ -1,6 +1,7 @@
 ---
-description: 窗口程序与 IDE/Webview 内嵌 GUI 的文档落点与同步义务；若产品含自有文件格式/DSL，亦约束 IDL 版本化与兼容保证工程约定（非 API 载荷字段级 spec）
-alwaysApply: true
+description: 窗口/Webview/Electron GUI 文档（SDI/MDI、Toolbar、Dock、2D画布、脏文档、Log）；自有格式时的 IDL 工程约定。涉及 GUI 或四阶段文档中的界面章节时适用。
+globs: "**/ai-software-engineering/**/*.md", "**/media/**", "**/*webview*", "**/desktop/**", "**/*.html", "**/mindmap*/**"
+alwaysApply: false
 ---
 
 # 窗口程序 GUI 说明（强制）

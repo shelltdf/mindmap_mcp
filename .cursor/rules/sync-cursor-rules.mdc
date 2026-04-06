@@ -1,6 +1,6 @@
 ---
-description: 从其他项目复制或更新 .cursor/rules 后，对当前仓库做规则对齐与项目更新（同步 Cursor rules）
-alwaysApply: true
+description: 同步 rules、同步 cursor rules、更新 rules、rules 对齐、从别的项目复制了规则——迁入规则后对当前仓库做对齐与验证。
+alwaysApply: false
 ---
 
 # 同步 Cursor Rules（从外部更新后对齐当前项目）
