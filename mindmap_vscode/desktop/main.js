@@ -110,6 +110,32 @@ function getContentDirtyFromWebview() {
     .catch(() => false);
 }
 
+function focusMainWindowForMcpNotice() {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  try {
+    if (mainWindow.isMinimized()) {
+      mainWindow.restore();
+    }
+  } catch (_) {}
+  try {
+    mainWindow.show();
+  } catch (_) {}
+  try {
+    mainWindow.focus();
+  } catch (_) {}
+}
+
+function getBridgeUnavailableReason() {
+  if (mcpBridgeRef && mcpBridgeRef.startupError) {
+    const msg =
+      mcpBridgeRef.startupError instanceof Error
+        ? mcpBridgeRef.startupError.message
+        : String(mcpBridgeRef.startupError);
+    return msg.replace(/\s+/g, ' ').trim();
+  }
+  return '';
+}
+
 function requestWebview(type, extra = {}) {
   return new Promise((resolve, reject) => {
     const requestId = `host_${++hostReqSeq}`;
@@ -158,6 +184,7 @@ async function showMcpPersistNoticeIfNeeded() {
   const dirty = await getContentDirtyFromWebview();
   if (!noFile && !dirty) return;
   if (!mainWindow || mainWindow.isDestroyed()) return;
+  focusMainWindowForMcpNotice();
   const requestId = `mcp_notice_${++hostReqSeq}`;
   const title = 'MCP 提示';
   let message;
@@ -219,11 +246,21 @@ function startDesktopMcpBridge() {
     (err) => {
       void dialog.showErrorBox(
         'Mindmap MCP 桥接',
+        `启动失败：${err.message}\n请先构建桌面所需共享产物后再重启应用。`
+      );
+    },
+    (err) => {
+      void dialog.showErrorBox(
+        'Mindmap MCP 桥接',
         `监听失败（端口 ${port}）：${err.message}\n可设置环境变量 MINDMAP_BRIDGE_PORT 或 MINDMAP_DESKTOP_BRIDGE_PORT 为其他端口。`
       );
     },
     ROOT_DIR
   );
+  if (mcpBridgeRef && mcpBridgeRef.startupError) {
+    console.error(`[mindmap-desktop] MCP HTTP bridge disabled: ${mcpBridgeRef.startupError.message}`);
+    return;
+  }
   console.log(`[mindmap-desktop] MCP HTTP bridge: http://127.0.0.1:${port}/mcp-bridge/v1/call`);
 }
 
@@ -246,16 +283,20 @@ async function copyMcpBridgeInfoToClipboard() {
     null,
     2
   );
-  const warn =
-    '# 警告：HTTP MCP 桥当前未成功监听（例如端口被占用）。以下 URL/端口可能无效；请排除冲突后重启本应用再复制。\n\n';
+  const unavailableReason = getBridgeUnavailableReason();
+  const warn = unavailableReason
+    ? `# 警告：HTTP MCP 桥未成功启动。原因：${unavailableReason}\n\n`
+    : '# 警告：HTTP MCP 桥当前未成功监听（例如端口被占用）。以下 URL/端口可能无效；请排除冲突后重启本应用再复制。\n\n';
   const body = `${envBlock}\n\n示例（Claude Desktop / mcp.json）：\n${jsonHint}`;
   clipboard.writeText(listening ? body : warn + body);
   if (!listening && mainWindow && !mainWindow.isDestroyed()) {
+    const warningMessage = unavailableReason
+      ? `HTTP MCP 桥未成功启动。\n\n原因：${unavailableReason}\n\n剪贴板内容已附带说明；修复后请重启应用再复制。`
+      : 'HTTP MCP 桥可能未在监听（常见于端口冲突）。剪贴板内容已附带说明；请查看此前错误提示或更换 MINDMAP_BRIDGE_PORT / MINDMAP_DESKTOP_BRIDGE_PORT 后重启应用。';
     await dialog.showMessageBox(mainWindow, {
       type: 'warning',
       title: 'MCP 桥未就绪',
-      message:
-        'HTTP MCP 桥可能未在监听（常见于端口冲突）。剪贴板内容已附带说明；请查看此前错误提示或更换 MINDMAP_BRIDGE_PORT / MINDMAP_DESKTOP_BRIDGE_PORT 后重启应用。',
+      message: warningMessage,
       buttons: ['确定']
     });
   }

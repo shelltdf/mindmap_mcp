@@ -12,9 +12,9 @@
   },
   "scripts": {
     "start": "electron .",
-    "prebuild:win": "npm run mcp:pack --prefix ..",
-    "prebuild:linux": "npm run mcp:pack --prefix ..",
-    "prebuild:mac": "npm run mcp:pack --prefix ..",
+    "prebuild:win": "npm run compile --prefix .. && npm run mcp:pack --prefix ..",
+    "prebuild:linux": "npm run compile --prefix .. && npm run mcp:pack --prefix ..",
+    "prebuild:mac": "npm run compile --prefix .. && npm run mcp:pack --prefix ..",
     "build:win": "electron-builder --win nsis portable",
     "build:linux": "electron-builder --linux AppImage",
     "build:mac": "electron-builder --mac dmg"
