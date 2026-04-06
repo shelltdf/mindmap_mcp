@@ -1,9 +1,14 @@
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
-const { app, BrowserWindow, dialog, ipcMain, Menu } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain, Menu, clipboard } = require('electron');
+const { startMindmapMcpBridgeHttp } = require('./mcpBridge.js');
 
-const ROOT_DIR = path.resolve(__dirname, '..');
+// 开发：main.js 在 desktop/，资源在上一级 mindmap_vscode/。
+// 打包：electron-builder 不把 ../ 文件打进 app.asar；资源经 extraResources 放在 resources/mindmap-app/。
+const ROOT_DIR = app.isPackaged
+  ? path.join(process.resourcesPath, 'mindmap-app')
+  : path.resolve(__dirname, '..');
 const DIST_CORE = path.join(ROOT_DIR, 'dist', 'shared', 'mindmapCore.js');
 const PANEL_TS = path.join(ROOT_DIR, 'src', 'panel.ts');
 const JSMIND_JS = path.join(ROOT_DIR, 'media', 'jsmind', 'jsmind.js');
@@ -15,9 +20,17 @@ const ICON_PNG = path.join(ROOT_DIR, 'media', 'icon.png');
 
 function readPackageVersion() {
   try {
-    const p = path.join(ROOT_DIR, 'package.json');
-    const j = JSON.parse(fs.readFileSync(p, 'utf8'));
-    return String(j.version || '').trim();
+    const p = app.isPackaged
+      ? path.join(ROOT_DIR, 'mindmap-extension-package.json')
+      : path.join(ROOT_DIR, 'package.json');
+    if (fs.existsSync(p)) {
+      const j = JSON.parse(fs.readFileSync(p, 'utf8'));
+      const v = String(j.version || '').trim();
+      if (v) return v;
+    }
+  } catch (_) {}
+  try {
+    return String(app.getVersion() || '').trim();
   } catch (_) {
     return '';
   }
@@ -53,6 +66,200 @@ function parseByExt(text, ext) {
 let mainWindow = null;
 let currentFilePath = '';
 let currentExt = 'mmd';
+
+let hostReqSeq = 0;
+/** @type {Map<string, { resolve: (v: unknown) => void, reject: (e: Error) => void, timer: NodeJS.Timeout }>} */
+const pendingHostBridge = new Map();
+/** @type {Map<string, () => void>} */
+const pendingMcpNotice = new Map();
+let mcpBridgeRef = null;
+
+const BRIDGE_TOKEN_FILE = () => path.join(app.getPath('userData'), 'mindmap-desktop-mcp-token.txt');
+
+function loadOrCreateBridgeToken() {
+  try {
+    const p = BRIDGE_TOKEN_FILE();
+    if (fs.existsSync(p)) {
+      const t = fs.readFileSync(p, 'utf8').trim();
+      if (t) return t;
+    }
+  } catch (_) {}
+  const gen = crypto.randomBytes(24).toString('hex');
+  try {
+    fs.writeFileSync(BRIDGE_TOKEN_FILE(), gen, 'utf8');
+  } catch (_) {}
+  return gen;
+}
+
+function getBridgeListenPort() {
+  const n = Number(process.env.MINDMAP_DESKTOP_BRIDGE_PORT || process.env.MINDMAP_BRIDGE_PORT);
+  return Number.isFinite(n) && n > 0 && n < 65536 ? Math.floor(n) : 58741;
+}
+
+function getMcpServerScriptPath() {
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, 'mindmap-app', 'mcp-server', 'dist', 'index.js');
+  }
+  return path.join(ROOT_DIR, 'mcp-server', 'dist', 'index.js');
+}
+
+function getContentDirtyFromWebview() {
+  if (!mainWindow || mainWindow.isDestroyed()) return Promise.resolve(false);
+  return mainWindow.webContents
+    .executeJavaScript('Boolean(window.mmGetContentDirty && window.mmGetContentDirty())')
+    .catch(() => false);
+}
+
+function requestWebview(type, extra = {}) {
+  return new Promise((resolve, reject) => {
+    const requestId = `host_${++hostReqSeq}`;
+    const timer = setTimeout(() => {
+      pendingHostBridge.delete(requestId);
+      reject(new Error(`Webview request timed out: ${type}`));
+    }, 10000);
+    pendingHostBridge.set(requestId, { resolve, reject, timer });
+    const msg = { type, requestId, ...extra };
+    let payloadJson;
+    try {
+      payloadJson = JSON.stringify(msg);
+    } catch (e) {
+      clearTimeout(timer);
+      pendingHostBridge.delete(requestId);
+      reject(e instanceof Error ? e : new Error(String(e)));
+      return;
+    }
+    const js = `window.dispatchEvent(new MessageEvent('message', { data: ${payloadJson} }));`;
+    if (!mainWindow || mainWindow.isDestroyed()) {
+      clearTimeout(timer);
+      pendingHostBridge.delete(requestId);
+      reject(new Error('Webview not available'));
+      return;
+    }
+    void mainWindow.webContents.executeJavaScript(js).catch((err) => {
+      clearTimeout(timer);
+      pendingHostBridge.delete(requestId);
+      reject(err instanceof Error ? err : new Error(String(err)));
+    });
+  });
+}
+
+async function autoSaveForMcpBridgeIfNeeded() {
+  if (!currentFilePath) return;
+  const dirty = await getContentDirtyFromWebview();
+  if (!dirty) return;
+  const tree = await requestWebview('mindmap:hostGetTree', {});
+  const content = serializeByExt(tree, currentExt);
+  fs.writeFileSync(currentFilePath, content, 'utf8');
+  sendHostMessage({ type: 'mindmap:savedOk' });
+}
+
+async function showMcpPersistNoticeIfNeeded() {
+  const noFile = !currentFilePath;
+  const dirty = await getContentDirtyFromWebview();
+  if (!noFile && !dirty) return;
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  const requestId = `mcp_notice_${++hostReqSeq}`;
+  const title = 'MCP 提示';
+  let message;
+  if (noFile && dirty) {
+    message =
+      '当前为未命名脑图，且画布上有未保存到磁盘的修改。\n\nMCP 将读取/修改编辑器中的实时内容（尚未写入文件）。建议先使用「保存」或「另存为」落盘后再让自动化操作。';
+  } else if (noFile) {
+    message = '当前脑图尚未保存到任何文件路径。\n\nMCP 将针对编辑器中的内容操作。建议先「另存为」指定文件。';
+  } else {
+    message =
+      '当前有未保存到磁盘的修改。\n\nMCP 会使用画布上的最新数据，但磁盘上的文件仍是旧版本。建议在执行 MCP 前保存。';
+  }
+  await new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      pendingMcpNotice.delete(requestId);
+      resolve();
+    }, 120000);
+    pendingMcpNotice.set(requestId, () => {
+      clearTimeout(timer);
+      pendingMcpNotice.delete(requestId);
+      resolve();
+    });
+    sendHostMessage({ type: 'mindmap:showMcpPersistNotice', requestId, title, message });
+  });
+}
+
+function buildBridgeHost() {
+  return {
+    isAvailable: () => !!(mainWindow && !mainWindow.isDestroyed()),
+    getActiveEditorId: () => 'mindmap-desktop',
+    getInactiveEditorError: () =>
+      'Mindmap Desktop window is not available. Open the app (or use the VS Code extension with an editor tab open).',
+    getPanelTitle: () => {
+      if (!mainWindow || mainWindow.isDestroyed()) return '';
+      try {
+        return mainWindow.getTitle() || 'MindmapDesktop';
+      } catch {
+        return 'MindmapDesktop';
+      }
+    },
+    getBackingFilePath: () => (currentFilePath ? currentFilePath : null),
+    getMindmapFormat: () => (currentExt ? currentExt : null),
+    aiGetTree: () => requestWebview('mindmap:hostGetTree', {}),
+    aiGetSelection: () => requestWebview('mindmap:hostGetSelection', {}),
+    aiApplyOps: (ops, dryRun, transaction, strict) =>
+      requestWebview('mindmap:hostApplyOps', { ops, dryRun, transaction, strict }),
+    autoSaveForMcpBridgeIfNeeded,
+    showMcpPersistNoticeIfNeeded
+  };
+}
+
+function startDesktopMcpBridge() {
+  const port = getBridgeListenPort();
+  const token = loadOrCreateBridgeToken();
+  mcpBridgeRef = startMindmapMcpBridgeHttp(
+    port,
+    token,
+    buildBridgeHost,
+    (err) => {
+      void dialog.showErrorBox(
+        'Mindmap MCP 桥接',
+        `监听失败（端口 ${port}）：${err.message}\n可设置环境变量 MINDMAP_BRIDGE_PORT 或 MINDMAP_DESKTOP_BRIDGE_PORT 为其他端口。`
+      );
+    },
+    ROOT_DIR
+  );
+  console.log(`[mindmap-desktop] MCP HTTP bridge: http://127.0.0.1:${port}/mcp-bridge/v1/call`);
+}
+
+async function copyMcpBridgeInfoToClipboard() {
+  const listening = !!(mcpBridgeRef && mcpBridgeRef.listening);
+  const port = mcpBridgeRef ? mcpBridgeRef.port : getBridgeListenPort();
+  const token = loadOrCreateBridgeToken();
+  const url = `http://127.0.0.1:${port}`;
+  const script = getMcpServerScriptPath();
+  const envBlock = `MINDMAP_BRIDGE_URL=${url}\nMINDMAP_BRIDGE_TOKEN=${token}`;
+  const jsonHint = JSON.stringify(
+    {
+      command: 'node',
+      args: [script],
+      env: {
+        MINDMAP_BRIDGE_URL: url,
+        MINDMAP_BRIDGE_TOKEN: token
+      }
+    },
+    null,
+    2
+  );
+  const warn =
+    '# 警告：HTTP MCP 桥当前未成功监听（例如端口被占用）。以下 URL/端口可能无效；请排除冲突后重启本应用再复制。\n\n';
+  const body = `${envBlock}\n\n示例（Claude Desktop / mcp.json）：\n${jsonHint}`;
+  clipboard.writeText(listening ? body : warn + body);
+  if (!listening && mainWindow && !mainWindow.isDestroyed()) {
+    await dialog.showMessageBox(mainWindow, {
+      type: 'warning',
+      title: 'MCP 桥未就绪',
+      message:
+        'HTTP MCP 桥可能未在监听（常见于端口冲突）。剪贴板内容已附带说明；请查看此前错误提示或更换 MINDMAP_BRIDGE_PORT / MINDMAP_DESKTOP_BRIDGE_PORT 后重启应用。',
+      buttons: ['确定']
+    });
+  }
+}
 
 function defaultTree() {
   return {
@@ -129,7 +336,10 @@ function createWindow() {
   mainWindow.setAutoHideMenuBar(true);
   mainWindow.setMenuBarVisibility(false);
   const html = makeStandaloneHtml(defaultTree(), 'mmd');
-  const htmlPath = path.join(ROOT_DIR, 'out', 'desktop_runtime.html');
+  // app.asar 内不可写；打包后把运行时 HTML 写到 userData。
+  const htmlPath = app.isPackaged
+    ? path.join(app.getPath('userData'), 'desktop_runtime.html')
+    : path.join(ROOT_DIR, 'out', 'desktop_runtime.html');
   fs.mkdirSync(path.dirname(htmlPath), { recursive: true });
   fs.writeFileSync(htmlPath, html, 'utf8');
   void mainWindow.loadFile(htmlPath);
@@ -199,6 +409,13 @@ function createWindow() {
           mainWindow.setAutoHideMenuBar(!next);
           mainWindow.setMenuBarVisibility(next);
         }
+      },
+      { type: 'separator' },
+      {
+        label: '复制 MCP 连接信息（到剪贴板）',
+        click: () => {
+          void copyMcpBridgeInfoToClipboard();
+        }
       }
     ]);
     menu.popup({ window: mainWindow });
@@ -216,9 +433,17 @@ function createWindow() {
 
 app.whenReady().then(() => {
   createWindow();
+  startDesktopMcpBridge();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
+});
+
+app.on('will-quit', () => {
+  if (mcpBridgeRef) {
+    mcpBridgeRef.close();
+    mcpBridgeRef = null;
+  }
 });
 
 app.on('window-all-closed', () => {
@@ -269,6 +494,35 @@ ipcMain.handle('mindmap:save', async (_evt, payload) => {
 
 ipcMain.on('vscode:postMessage', async (_evt, msg) => {
   if (!msg || typeof msg !== 'object') return;
+
+  if (msg.type === 'mindmap:hostResponse') {
+    const requestId = String(msg.requestId || '');
+    const pending = pendingHostBridge.get(requestId);
+    if (!pending) return;
+    pendingHostBridge.delete(requestId);
+    clearTimeout(pending.timer);
+    if (msg.ok === false) {
+      const err = new Error(String(msg.error || 'Unknown webview error'));
+      if (msg.data !== null && msg.data !== undefined && typeof msg.data === 'object') {
+        err.webviewData = msg.data;
+      }
+      pending.reject(err);
+    } else {
+      pending.resolve(msg.data);
+    }
+    return;
+  }
+
+  if (msg.type === 'mindmap:noticeAck') {
+    const rid = String(msg.requestId || '');
+    const fn = pendingMcpNotice.get(rid);
+    if (fn) {
+      pendingMcpNotice.delete(rid);
+      fn();
+    }
+    return;
+  }
+
   if (msg.type === 'mindmap:requestOpen') {
     const res = await dialog.showOpenDialog(mainWindow, {
       properties: ['openFile'],

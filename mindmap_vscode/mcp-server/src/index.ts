@@ -21,7 +21,7 @@ async function bridgeCall(method: string, args: Record<string, unknown>): Promis
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     throw new Error(
-      `无法连接 Mindmap 桥接 (${BRIDGE_URL})：${msg}。请确认 VS Code/Cursor 已加载本扩展且桥接已启用。`
+      `无法连接 Mindmap 桥接 (${BRIDGE_URL})：${msg}。请确认已启动 Mindmap Desktop（或 VS Code/Cursor 中的本扩展）且 HTTP 桥接已启用。`
     );
   }
   const text = await res.text();

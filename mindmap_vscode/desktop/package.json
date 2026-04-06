@@ -3,9 +3,18 @@
   "version": "0.1.0",
   "private": true,
   "description": "Standalone desktop mode for mindmap-vscode.",
+  "author": "av-ai-dev",
   "main": "main.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shelltdf/mindmap_mcp.git",
+    "directory": "mindmap_vscode/desktop"
+  },
   "scripts": {
     "start": "electron .",
+    "prebuild:win": "npm run mcp:pack --prefix ..",
+    "prebuild:linux": "npm run mcp:pack --prefix ..",
+    "prebuild:mac": "npm run mcp:pack --prefix ..",
     "build:win": "electron-builder --win nsis portable",
     "build:linux": "electron-builder --linux AppImage",
     "build:mac": "electron-builder --mac dmg"
@@ -15,18 +24,54 @@
     "electron-builder": "^24.13.3"
   },
   "build": {
+    "electronVersion": "31.7.7",
     "appId": "com.av.aidev.mindmap.desktop",
     "productName": "MindmapDesktop",
     "directories": {
-      "output": "../out/desktop"
+      "output": "../out/desktop_release"
     },
     "files": [
       "main.js",
+      "mcpBridge.js",
       "preload.js",
-      "renderer/**",
-      "../media/jsmind/**"
+      "renderer/**"
+    ],
+    "extraResources": [
+      {
+        "from": "../dist/shared/mindmapCore.js",
+        "to": "mindmap-app/dist/shared/mindmapCore.js"
+      },
+      {
+        "from": "../dist/shared/mcpBridgeCore.js",
+        "to": "mindmap-app/dist/shared/mcpBridgeCore.js"
+      },
+      {
+        "from": "../src/panel.ts",
+        "to": "mindmap-app/src/panel.ts"
+      },
+      {
+        "from": "../package.json",
+        "to": "mindmap-app/mindmap-extension-package.json"
+      },
+      {
+        "from": "../media",
+        "to": "mindmap-app/media"
+      },
+      {
+        "from": "../mcp-server/package.json",
+        "to": "mindmap-app/mcp-server/package.json"
+      },
+      {
+        "from": "../mcp-server/dist",
+        "to": "mindmap-app/mcp-server/dist"
+      },
+      {
+        "from": "../mcp-server/node_modules",
+        "to": "mindmap-app/mcp-server/node_modules"
+      }
     ],
     "win": {
+      "signAndEditExecutable": false,
       "target": [
         "nsis",
         "portable"

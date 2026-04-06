@@ -3,7 +3,8 @@
 | 模型/能力 | 路径 |
 |-----------|------|
 | 扩展激活、命令注册、AI 命令；**`onWillSaveTextDocument` → `flushPendingWebviewEditsForDocument`**（脑图 `.mmd`/`.jm` 保存前合并画布） | `mindmap_vscode/src/extension.ts` |
-| MCP HTTP 桥、schema 文本 | `mindmap_vscode/src/bridge.ts` |
+| MCP HTTP 桥（宿主绑定） | `mindmap_vscode/src/bridge.ts` |
+| MCP HTTP 桥（共享逻辑、schema） | `mindmap_vscode/src/shared/mcpBridgeCore.ts` |
 | Webview 面板（HTML 壳模板、`#mindmapAppShell`、`asWebviewUri`、换树/MCP/消息）、MCP 持久化提示、格式/主题 Dock、视图平移与 ResizeObserver、`mindmap:requestToggleFullScreen`（宿主 → **`toggleMaximizeEditorGroup`**）；`documentIsMindmapBuffer`、`flushPendingWebviewEditsForDocument` / `flushAllPendingWebviewEditsToDocument` | `mindmap_vscode/src/panel.ts` |
 | Webview 主脚本（jsMind、画布、Dock、三色灯、`#mindmapAppShell` 全屏、`relayoutMindAfterVisuals`、`resetZoom`/`resetPanToOrigin`/`centerRoot`/`fitAll`、滚轮指针锚点缩放、`zoomByStep`、`installCanvasVisibilityAndDockSplitter` 等） | `mindmap_vscode/media/webview-app.js` |
 | Webview 主题早置（`data-mm-ui`） | `mindmap_vscode/media/webview-theme-init.js` |

@@ -1,9 +1,17 @@
 # Changelog
 
+## v0.0.160 - 2026-04-06
+
+- 桌面 MCP HTTP 桥：`readBody` 异常时始终返回 JSON 响应，避免客户端挂死；暴露 `listening` 状态；复制连接信息时在桥未就绪时警告并标注剪贴板说明。
+- MCP 子包：移除未使用的 `mindmap-vscode` 本地依赖。
+- 仓库：根目录 `.gitignore` 忽略 `.claude/settings.local.json`；`doc/MCP_SETUP.md` 区分 `get_editor_state.editor`（desktop vs 扩展）。
+- 移除冗余 `setup.py`；统一部署入口以 `build.py` / `install.py` / `run.py` / `run_web.py` 为准（`developer-manual.md` 已同步）。
+- MCP HTTP 桥：`src/shared/mcpBridgeCore.ts` 为扩展与 Mindmap Desktop 共用实现；`src/bridge.ts`、`desktop/mcpBridge.js` 仅做宿主绑定；桌面包 `extraResources` 增加 `mcpBridgeCore.js`。
+
 ## v0.0.158 - 2026-04-02
 
 - 自动记录：执行 build.py 触发版本打包。
-- 变更说明：请在此补充本次主要修改点。
+- 文档：用户向推荐 **Mindmap Desktop** 为首选；**VS Code/Cursor 扩展**标为兼容路径（**仍保留** `build.py` / `install.py` 与 VSIX）。涉及 `doc/MCP_SETUP.md`、`README.md`、`ai-software-engineering/03-ops/user-manual.md`、`developer-manual.md`。
 
 ## v0.0.157 - 2026-04-02
 

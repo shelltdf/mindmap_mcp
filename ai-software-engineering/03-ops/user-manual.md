@@ -2,10 +2,15 @@
 
 ## 环境
 
-- **VS Code** 或 **Cursor**，版本需满足扩展 `engines.vscode`（见 `mindmap_vscode/package.json`）。
-- 使用 MCP 时：本机需可用 **Node** 以启动 `mcp-server`；IDE 需加载本扩展且桥接已启用。
+- **推荐**：**Mindmap Desktop（Electron）** — 独立安装/运行，无需 IDE；详见 `mindmap_vscode/README.md`「独立桌面模式」。
+- **兼容**：**VS Code** 或 **Cursor**，版本需满足扩展 `engines.vscode`（见 `mindmap_vscode/package.json`）；扩展仍可构建 VSIX，见开发者手册。
+- 使用 MCP 时：本机需可用 **Node** 以启动 `mcp-server`；HTTP 桥由 **Mindmap Desktop**（推荐）或 **已启用桥接的本扩展** 提供，二者勿同时占用默认端口 `58741`。
 
 ## 基本使用
+
+**Mindmap Desktop**：通过桌面应用 **打开/保存** 脑图文件即可；界面与扩展内 Webview 同源，细节见 `mindmap_vscode/README.md`。
+
+**VS Code / Cursor 扩展**：
 
 1. 安装扩展（市场或 VSIX，见开发者手册）。
 2. 打开 `.mmd` / `.jm` / `.xmind`，或使用命令 **`Mindmap: Open Mindmap Editor`**。
@@ -15,14 +20,21 @@
 6. **日志**：在脑图编辑器窗口内，点击**底部页内状态栏左侧区域**（`#statusbarLeft`，含状态文案；**勿**将右侧保存状态灯当作 Log 入口）打开 **Log**，可查看带时间戳的纯文本历史，并用 **复制全部** 拷贝到剪贴板；**Help → 查看日志** 亦可打开。
 7. **浏览器调试页**（`run_web.py`）：整页刷新或热更新重载时，可能出现极短暂画面跳变；若需稳定对比 UI，可暂时关闭自动刷新依赖，手动刷新。
 
-## MCP（Cursor 等）
+## MCP（Cursor、Claude Desktop、MCP Router 等）
 
-1. 在扩展中执行 **`Mindmap: Show MCP Bridge Info`** 复制 `MINDMAP_BRIDGE_URL` 与 `MINDMAP_BRIDGE_TOKEN`。
-2. 执行 **`Mindmap: Configure Cursor MCP (Workspace)`** 或 **(User)** 写入 `mcp.json`。
-3. 重载窗口；在 MCP 列表中确认 `user-mindmap`（名称以实际配置为准）。
-4. 读写脑图前请先打开脑图编辑器面板。
+**推荐（Mindmap Desktop）**：
 
-更完整的菜单、快捷键、未保存行为与排障见 **`mindmap_vscode/README.md`**（实现侧用户文档，与本节互补）。画布内 **`↑`/`↓`** 可在兄弟节点间切换选中，**`←`/`→`** 可在父节点与第一个子节点间移动选中（无修饰键；与 **`Alt` + 方向键** 调整顺序/提升下降不同）。**节点内联编辑**时，点击**该节点以外**任意处（画布、其他节点、页内菜单或 Dock 等）会结束编辑并提交标题；**Esc** 可**取消**编辑并恢复原标题；新增子节点用 **`Tab`** 或插入菜单，**不再**通过双击空白画布创建子主题。
+1. 启动桌面应用，窗口 **顶区右键** → **「复制 MCP 连接信息（到剪贴板）」**，得到 `MINDMAP_BRIDGE_URL` 与 `MINDMAP_BRIDGE_TOKEN`。
+2. 在 MCP 客户端中用 `node` 启动 `mcp-server/dist/index.js`（路径见 **`mindmap_vscode/doc/MCP_SETUP.md`**：仓库 `dist`、安装包 `resources/...` 等），并为该进程设置上述两个环境变量；若使用 **MCP Router**，在 Router 里为 Mindmap 子 MCP 配置相同变量。
+3. 重连 MCP；读写前请在桌面中 **打开** 要操作的脑图。
+
+**兼容（已安装 VS Code / Cursor 扩展）**：
+
+1. 执行 **`Mindmap: Show MCP Bridge Info`** 复制 env；可选 **`Mindmap: Configure Cursor MCP (Workspace)`** / **(User)** 写入 `mcp.json`。
+2. 重载窗口；在 MCP 列表中确认 `user-mindmap`（名称以实际配置为准）。
+3. 读写前请先打开脑图编辑器面板。
+
+更完整的菜单、快捷键、未保存行为与排障见 **`mindmap_vscode/README.md`** 与 **`mindmap_vscode/doc/MCP_SETUP.md`**（实现侧用户文档，与本节互补）。画布内 **`↑`/`↓`** 可在兄弟节点间切换选中，**`←`/`→`** 可在父节点与第一个子节点间移动选中（无修饰键；与 **`Alt` + 方向键** 调整顺序/提升下降不同）。**节点内联编辑**时，点击**该节点以外**任意处（画布、其他节点、页内菜单或 Dock 等）会结束编辑并提交标题；**Esc** 可**取消**编辑并恢复原标题；新增子节点用 **`Tab`** 或插入菜单，**不再**通过双击空白画布创建子主题。
 
 - **画布左上「快捷键」面板**：与右上「显示」面板类似，用标题旁的 **▲/▼** 折叠或展开；**默认折叠**，展开后可阅读完整快捷键列表（**Esc** 可收起，与 README 一致）。悬停折叠钮可看到是否与全局快捷键绑定（本实现标明「无全局快捷键」）。
 - **缩放**：左下角 **适应 / 原点 / 还原** 与滚轮、**双击百分比** 等说明见 README；**原点**为在**不改变缩放**下将**整图包围盒**重新对齐视口中心（与「适应」的居中一致，适应还会改缩放）；**还原**为将缩放回到 100%（以当前视口中心为锚）；**根节点居正**在右键/视图菜单，见 README。

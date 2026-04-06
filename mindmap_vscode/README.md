@@ -2,6 +2,11 @@
 
 一个基于 Webview + `jsMind` 的 WYSIWYG 脑图编辑器扩展，适用于 **VS Code** 与 **Cursor**（扩展显示名：**Mindmap (MindmapEditor)**，当前版本见 `package.json` 的 `version`）。
 
+### 产品推荐策略（文档导向）
+
+- **新用户、MCP 与独立桌面编辑**：文档以 **Mindmap Desktop（Electron）** 为**首选**（`python run.py` 或安装包）；HTTP 桥与脑图一体，**无需**安装 IDE 扩展。
+- **VS Code / Cursor 扩展**：**仍保留并支持构建 VSIX**（`build.py` / `install.py`），供既有用户与 IDE 内嵌场景；**不再作为文档中的首要推广路径**。桌面与扩展**勿同时占用**默认 MCP 桥端口 `58741`。
+
 ## 支持的输入/输出文件格式
 
 - `*.jm`：jsMind `node_tree` JSON 格式
@@ -30,9 +35,9 @@
 
 ## 发布模式（双模式）
 
-当前仓库支持两种发布/运行方式，可并行保留：
+当前仓库支持两种发布/运行方式，可并行保留。**文档推荐**：新部署优先 **独立桌面模式**；扩展模式保留给 IDE 内嵌与既有用户。
 
-- **VS Code / Cursor 扩展模式（原模式）**
+- **VS Code / Cursor 扩展模式（兼容 / 可继续构建 VSIX）**
   - 构建：`python build.py`（编译、打 VSIX，`package.json` patch +1）
   - 安装：`python install.py`（**默认先执行 `build.py`**，再安装 `out` 下与版本一致的 VSIX，保证是当前源码最新产物）
   - 仅安装、不重新构建：`python install.py --no-build`
@@ -288,6 +293,28 @@ Language
 
 ## MCP（Pencil 同款三工具形态）
 
+### 通用 MCP 客户端支持
+
+Mindmap MCP 服务器使用标准 stdio 协议，支持任意 MCP 兼容客户端。
+
+**支持的客户端**：Claude Desktop、Codex CLI、Cline、Cursor、MCP Router 等。
+
+**快速配置（推荐：Mindmap Desktop）**：
+
+1. 启动 **Mindmap Desktop**，顶区右键 → **「复制 MCP 连接信息（到剪贴板）」**（`MINDMAP_BRIDGE_URL` / `MINDMAP_BRIDGE_TOKEN`）。  
+2. 用 `node` 启动 `mcp-server/dist/index.js`（仓库内、桌面安装包 `resources/...` 或扩展目录均可，见 [doc/MCP_SETUP.md](doc/MCP_SETUP.md)），并为该进程设置上述两个环境变量。  
+3. 在 MCP 客户端（含 Router 子 MCP）中完成注册并重连。
+
+**兼容路径（已安装 VS Code / Cursor 扩展）**：可用命令 **`Mindmap: Show MCP Bridge Info`** 复制 env；`mcp-server` 路径可为扩展安装目录下的 `mcp-server/dist/index.js`。
+
+**详细配置指南**：[doc/MCP_SETUP.md](doc/MCP_SETUP.md)
+
+**示例脑图**：[data/jm/mindmap.jm](data/jm/mindmap.jm)（包含完整测试用例：基础结构、AI 操作、MCP 工具、CRUD 等）
+
+---
+
+### MCP 工具说明
+
 Cursor / 其它支持 MCP 的客户端可加载 **stdio MCP 服务** `mcp-server`，工具名与用法对齐 Pencil 习惯：
 
 | 工具 | 作用 |
@@ -296,14 +323,14 @@ Cursor / 其它支持 MCP 的客户端可加载 **stdio MCP 服务** `mcp-server
 | `batch_get` | 读取当前面板中的树；可选 `nodeIds`、`readDepth`、`patterns`（按标题正则/子串过滤） |
 | `batch_design` | 批量写：`operations` 为 **JSON 字符串**，内容为 `aiApplyOps` 的 op 数组；默认 `transaction`/`strict` 为 true（失败整批回滚 + 结构化失败信息） |
 
-**架构（与 Pencil 一致的两进程思路）**：扩展在 **127.0.0.1** 上启 HTTP 桥（仅本机），MCP 进程通过 `fetch` 把工具调用转到 VS Code / Cursor 里当前 Webview 脑图。
+**架构（与 Pencil 一致的两进程思路）**：**Mindmap Desktop** 或 **VS Code/Cursor 扩展**在 **127.0.0.1** 上启 HTTP 桥（仅本机），MCP 进程通过 `fetch` 把工具调用转到当前宿主里的 Webview 脑图。
 
 **未落盘 / 未保存 时的 MCP 行为**：
 
 - 对 HTTP 桥的 **`batch_get`** 与 **`batch_design`**：**若已绑定磁盘路径**且画布有未保存修改（标题栏 **`·`**），会**先自动静默保存**到该文件（无成功弹窗；失败则本次 MCP 请求直接报错）。**若无文件路径**（未命名脑图），仍会在画布中央弹出 **「MCP 提示」**，用户确认后再继续（`get_editor_state` 不弹）。
-- 多开多个脑图标签时，桥接与 AI 命令面向 **当前获得焦点的** 那个面板（内部以 `MindmapPanel.currentPanel` 为准）。
+- **扩展**：多开多个脑图标签时，桥接与 AI 命令面向 **当前获得焦点的** 那个面板（内部以 `MindmapPanel.currentPanel` 为准）。**桌面**：以当前主窗口中的编辑器为准。
 
-**推荐：安装后不用手写 `E:/...` 路径**（与从市场/VSIX 安装扩展的体验一致）：
+**扩展用户：安装后不用手写 `E:/...` 路径**（与从市场/VSIX 安装扩展的体验一致；**纯桌面用户可跳过本节**，按上文「快速配置」与 [doc/MCP_SETUP.md](doc/MCP_SETUP.md) 即可）：
 
 1. 使用 **`build.py` / `vsce package` 打出的 VSIX**（`vscode:prepublish` 会把 `mcp-server` 打进扩展包），或本地开发时在 `tools/mindmap_vscode` 执行过 `npm run mcp:pack`。
 2. 在 VS Code / Cursor 中任选其一：
