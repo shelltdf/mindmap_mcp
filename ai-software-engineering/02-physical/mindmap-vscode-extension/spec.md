@@ -5,7 +5,7 @@
 - **publisher / name / version**：以 `mindmap_vscode/package.json` 为准（示例：`av-ai-dev` / `mindmap-vscode`；版本号以该文件 `version` 字段为单一事实来源）。
 - **自定义编辑器 ID**：`mindmap.customTextEditor`；匹配 `*.mmd`、`*.jm`。
 - **桥接监听**：`127.0.0.1:{mindmap.mcpBridge.port}`，默认端口 `58741`；可用配置关闭 `mindmap.mcpBridge.enable`。
-- **桥接端点**：仅接受 `POST /mcp-bridge/v1/call`；其它路径 404。
+- **桥接端点**：仅接受 `POST /mcp-bridge/v1/call`；其它路径 404。HTTP 处理与 `batch_*` / `get_editor_state` 逻辑在 **`src/shared/mcpBridgeCore.ts`**；`src/bridge.ts` 仅绑定 VS Code 面板与 `MindmapPanel`。
 - **鉴权**：body JSON `token` 必须与扩展当前 token 完全一致，否则 401 `unauthorized`。
 - **请求体上限**：约 2 MiB；超出返回 413。
 

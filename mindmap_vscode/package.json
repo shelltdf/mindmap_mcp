@@ -3,9 +3,14 @@
   "displayName": "Mindmap (MindmapEditor)",
   "icon": "media/icon.png",
   "description": "WYSIWYG mindmap editor inside VS Code (webview). Supports multiple formats.",
-  "version": "0.0.158",
+  "version": "0.0.160",
   "publisher": "av-ai-dev",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shelltdf/mindmap_mcp.git",
+    "directory": "mindmap_vscode"
+  },
   "engines": {
     "vscode": "^1.80.0"
   },

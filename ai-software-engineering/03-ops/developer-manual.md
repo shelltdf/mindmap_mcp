@@ -4,6 +4,7 @@
 
 - **工程文档（本规则约束）**：`ai-software-engineering/`
 - **实现子项目**：`mindmap_vscode/`（扩展 + MCP 包 + 桌面）
+- **文档推荐策略**：用户向文档以 **Mindmap Desktop** 为首选；**扩展仍保留构建与安装链路**（`build.py` / `install.py`），详见 `mindmap_vscode/README.md` 与 `doc/MCP_SETUP.md`。
 
 ## 构建与安装（扩展）
 
